@@ -547,6 +547,36 @@ export default function App() {
     showToast('Öğrenci sınıftan silindi.', 'info');
   };
 
+  // CLEAR ALL STUDENTS FROM CLASSROOM
+  const handleClearAllStudents = () => {
+    if (!currentClassroom) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: `${currentClassroom.name} Sınıfındaki Tüm Öğrencileri Kaldır?`,
+      message: `Bu işlem ${currentClassroom.name} sınıfındaki tüm öğrencileri, oturma planındaki yerleşimleri ve gözlem kayıtlarını tamamen temizleyecektir. Sınıf tamamen boşaltılacaktır. Bu işlemi onaylıyor musunuz?`,
+      confirmLabel: 'Evet, Tümünü Kaldır',
+      variant: 'danger',
+      action: () => {
+        const clearedSeats = currentClassroom.seats.map((seat) => ({
+          ...seat,
+          studentId: null,
+        }));
+
+        const updatedClass: Classroom = {
+          ...currentClassroom,
+          students: [],
+          seats: clearedSeats,
+          observations: [],
+          syncStatus: 'pending',
+        };
+
+        updateClassroomState(updatedClass);
+        showToast(`${currentClassroom.name} sınıfındaki tüm öğrenciler kaldırıldı. Sınıf boşaltıldı.`, 'info');
+      },
+    });
+  };
+
   // SHUFFLE SEATS
   const handleShuffleSeats = () => {
     if (!currentClassroom) return;
@@ -758,6 +788,7 @@ export default function App() {
               onOpenStudentManagement={() => setIsStudentManagementOpen(true)}
               onShuffleSeats={handleShuffleSeats}
               onResetSeats={handleResetSeats}
+              onClearAllStudents={handleClearAllStudents}
               isExportingPDF={isExportingPDF}
             />
 
@@ -872,6 +903,7 @@ export default function App() {
           classroom={currentClassroom}
           onAddStudent={handleAddStudent}
           onDeleteStudent={handleDeleteStudent}
+          onClearAllStudents={handleClearAllStudents}
         />
       )}
 

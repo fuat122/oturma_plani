@@ -81,7 +81,6 @@ export const BlackboardHeader: React.FC<BlackboardHeaderProps> = ({ classroom })
         <div className="col-span-2 hidden md:flex flex-col items-center justify-center p-3 rounded-2xl bg-sky-50/80 border border-sky-200/80 text-sky-900 shadow-xs">
           <div className="text-2xl mb-1">🪟</div>
           <span className="text-xs font-bold uppercase tracking-wider">Cam Kenarı</span>
-          <span className="text-[10px] text-sky-700/80 font-medium">Doğal Işık / Bahçe</span>
         </div>
       </div>
     </div>

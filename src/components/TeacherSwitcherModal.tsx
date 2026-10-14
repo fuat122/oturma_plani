@@ -41,10 +41,10 @@ export const TeacherSwitcherModal: React.FC<TeacherSwitcherModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                Öğretmen İzolasyon ve Yetki Paneli
+                Yetkili Öğretmen Paneli
               </h2>
               <p className="text-xs text-slate-500">
-                Aktif öğretmen profilini seçin veya izolasyonu test edin
+                Aktif yetkili öğretmen profilinizi seçin veya yönetin
               </p>
             </div>
           </div>
@@ -197,13 +197,13 @@ export const TeacherSwitcherModal: React.FC<TeacherSwitcherModalProps> = ({
             )}
           </div>
 
-          {/* SECTION 2: DEMO & ISOLATION TEST PERSONAS */}
+          {/* SECTION 2: OTHER TEACHER PERSONAS */}
           <div className="pt-2 border-t border-slate-100">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Demo & İzolasyon Testi Öğretmenleri:
+              Diğer Yetkili Öğretmen Profilleri:
             </div>
             <p className="text-[11px] text-slate-400 mb-2.5">
-              Aşağıdaki öğretmenlerden birini seçerek diğer öğretmenlerin sınıflarının (9-A, 10-B, Hazırlık-A) ve öğrenci raporlarının nasıl kesin olarak gizlendiğini test edebilirsiniz.
+              Farklı bir yetkili öğretmene geçerek sınıflarını (9-A, 10-B, Hazırlık-A) ve öğrenci listelerini inceleyebilirsiniz.
             </p>
 
             <div className="space-y-2">

@@ -88,11 +88,11 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
 
         {/* Action & Status Banner */}
         <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-slate-700">
+          <div className="flex flex-wrap items-center gap-2 text-slate-700">
             {isGoogleConnected ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Google Hesabı Bağlı: {activeTeacher.email}
+                Google Hesabı: {activeTeacher.email}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 font-semibold border border-amber-200">
@@ -106,11 +106,11 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={copyAsCsv}
-              className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1.5 transition-all shadow-2xs"
+              className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
               <Copy className="w-3.5 h-3.5" />
               <span>CSV Kopyala</span>
@@ -121,7 +121,7 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
                 href={classroom.googleSpreadsheetUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1.5 transition-all shadow-2xs"
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Google Drive'da Aç</span>
@@ -132,13 +132,59 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
               type="button"
               onClick={onTriggerSync}
               disabled={isSyncing}
-              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-50"
+              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Senkronize Ediliyor...' : 'E-Tabloyu Şimdi Güncelle'}</span>
             </button>
           </div>
         </div>
+
+        {/* PROMINENT GOOGLE DRIVE LINK BANNER */}
+        {classroom.googleSpreadsheetUrl ? (
+          <div className="px-6 py-3 bg-emerald-50 border-b border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-emerald-950">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <FileSpreadsheet className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold">Google Drive E-Tablo Doğrudan Bağlantısı:</div>
+                <div className="font-mono text-[11px] text-emerald-800 truncate select-all underline">
+                  {classroom.googleSpreadsheetUrl}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(classroom.googleSpreadsheetUrl!);
+                  alert('E-Tablo bağlantı adresi panoya kopyalandı:\n' + classroom.googleSpreadsheetUrl);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Linki Kopyala</span>
+              </button>
+              <a
+                href={classroom.googleSpreadsheetUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-1 transition-all shadow-xs"
+              >
+                <span>Doğrudan Aç</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 py-3 bg-amber-50 border-b border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-950">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Bu sınıf henüz Google Drive'a kaydedilmedi. "E-Tabloyu Şimdi Güncelle" butonuna basarak Google Drive hesabınızda oluşturabilir ve doğrudan linkini alabilirsiniz.</span>
+            </div>
+          </div>
+        )}
 
         {/* Business Logic Explanation Card */}
         <div className="px-6 py-2 bg-blue-50/50 border-b border-blue-100 text-[11px] text-blue-900 flex flex-wrap gap-4 items-center">

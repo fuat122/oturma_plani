@@ -55,9 +55,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900">
                   Akıllı Sınıf
                 </span>
-                <span className="hidden sm:inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-                  Lise v2.0
-                </span>
               </div>
               <p className="text-[10px] text-slate-500 font-medium hidden sm:block">
                 Oturma Planı & Öğrenci Takip Sistemi
@@ -113,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </button>
 
-          {/* Teacher Profile & Strict Isolation Badge */}
+          {/* Teacher Profile & Yetkili Öğretmen Badge */}
           <button
             type="button"
             onClick={onOpenTeacherSwitcher}
@@ -122,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'border-blue-300 bg-blue-50/70 hover:bg-blue-100/70'
                 : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
             }`}
-            title="Öğretmen Değiştir ve Sıkı İzolasyon Testini Aç"
+            title="Yetkili Öğretmen Profilini Değiştir veya Yönet"
           >
             {activeTeacher.avatar ? (
               <img
@@ -161,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'bg-indigo-100 text-indigo-700'
               }`}
             >
-              <span>İzolasyon Testi</span>
+              <span>Yetkili Öğretmen</span>
               <ChevronDown className="w-3 h-3" />
             </div>
           </button>

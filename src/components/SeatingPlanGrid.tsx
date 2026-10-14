@@ -77,9 +77,6 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                     <h3 className="text-sm font-bold text-slate-800 tracking-tight">
                       {meta.name}
                     </h3>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      4 Sıra x 2 Öğrenci (İkili Masalar)
-                    </p>
                   </div>
                 </div>
 
