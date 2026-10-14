@@ -117,22 +117,50 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={onOpenTeacherSwitcher}
-            className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all text-left shadow-2xs"
+            className={`flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl border transition-all text-left shadow-2xs ${
+              activeTeacher.isGoogleUser
+                ? 'border-blue-300 bg-blue-50/70 hover:bg-blue-100/70'
+                : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+            }`}
             title="Öğretmen Değiştir ve Sıkı İzolasyon Testini Aç"
           >
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-              {activeTeacher.name.charAt(0)}
-            </div>
-            <div className="hidden lg:block min-w-0 max-w-[150px]">
+            {activeTeacher.avatar ? (
+              <img
+                src={activeTeacher.avatar}
+                alt={activeTeacher.name}
+                className="w-8 h-8 rounded-xl object-cover border border-blue-400 shrink-0"
+              />
+            ) : (
+              <div
+                className={`w-8 h-8 rounded-xl text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs ${
+                  activeTeacher.isGoogleUser ? 'bg-blue-600' : 'bg-indigo-600'
+                }`}
+              >
+                {activeTeacher.name.charAt(0)}
+              </div>
+            )}
+            <div className="hidden lg:block min-w-0 max-w-[160px]">
               <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
                 <span>{activeTeacher.name}</span>
-                <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                {activeTeacher.isGoogleUser ? (
+                  <span className="text-[9px] font-bold px-1 py-0.2 rounded-full bg-blue-600 text-white">
+                    Google
+                  </span>
+                ) : (
+                  <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                )}
               </div>
               <div className="text-[10px] text-slate-500 truncate">
                 {activeTeacher.branch}
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+            <div
+              className={`hidden sm:flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                activeTeacher.isGoogleUser
+                  ? 'bg-blue-200/80 text-blue-900'
+                  : 'bg-indigo-100 text-indigo-700'
+              }`}
+            >
               <span>İzolasyon Testi</span>
               <ChevronDown className="w-3 h-3" />
             </div>

@@ -450,3 +450,87 @@ export function getActiveCLassId(): string | null {
 export function setActiveClassId(classId: string) {
   localStorage.setItem(STORAGE_KEYS.ACTIVE_CLASS_ID, classId);
 }
+
+export function createStarterClassroomForGoogleTeacher(teacher: Teacher): Classroom {
+  const seats = generateDefaultSeats();
+  const sampleNames = [
+    { name: 'Ahmet Faruk Yılmaz', gender: 'E' as const },
+    { name: 'Zeynep Defne Kaya', gender: 'K' as const },
+    { name: 'Kerem Arda Demir', gender: 'E' as const },
+    { name: 'Elif Sare Şahin', gender: 'K' as const },
+    { name: 'Emir Kaan Çelik', gender: 'E' as const },
+    { name: 'Defne Beren Aydın', gender: 'K' as const },
+    { name: 'Ege Baran Arslan', gender: 'E' as const },
+    { name: 'Nehir İrem Koç', gender: 'K' as const },
+    { name: 'Yağız Alp Kurt', gender: 'E' as const },
+    { name: 'İrem Su Doğan', gender: 'K' as const },
+    { name: 'Umut Tuna Yıldız', gender: 'E' as const },
+    { name: 'Ceren Naz Öztürk', gender: 'K' as const },
+    { name: 'Mert Ali Güneş', gender: 'E' as const },
+    { name: 'Duru Melis Aktaş', gender: 'K' as const },
+    { name: 'Burak Can Yavuz', gender: 'E' as const },
+    { name: 'Ada Nil Yüksel', gender: 'K' as const },
+    { name: 'Alperen Bora Polat', gender: 'E' as const },
+    { name: 'Buse Ela Tekin', gender: 'K' as const },
+    { name: 'Çağan Deniz Er', gender: 'E' as const },
+    { name: 'Sude Nur Çetin', gender: 'K' as const },
+  ];
+
+  const students: Student[] = sampleNames.map((s, idx) => ({
+    id: `st_g_${Date.now()}_${idx}`,
+    studentNumber: String(300 + idx + 1),
+    fullName: s.name,
+    gender: s.gender,
+  }));
+
+  students.forEach((st, idx) => {
+    if (idx < seats.length) {
+      seats[idx].studentId = st.id;
+      st.seatCode = seats[idx].code;
+    }
+  });
+
+  const today = new Date().toISOString().split('T')[0];
+  const classId = `class_g_${Date.now()}`;
+
+  return {
+    id: classId,
+    teacherId: teacher.id,
+    name: '9-A',
+    grade: '9. Sınıf',
+    branchName: `${teacher.name} Danışmanlığında 9-A Sınıfı`,
+    academicYear: '2026-2027',
+    maxCapacity: 23,
+    layoutType: '3-block-standard',
+    students,
+    seats,
+    observations: [
+      {
+        id: `obs_g_1`,
+        classId,
+        studentId: students[0].id,
+        studentName: students[0].fullName,
+        date: today,
+        category: 'katilim',
+        content: 'Ders başlangıcında oturma düzenine hızlı uyum sağladı ve tahta uygulamalarına aktif katıldı.',
+        teacherId: teacher.id,
+        teacherName: teacher.name,
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    classNotes: [
+      {
+        id: `cn_g_1`,
+        classId,
+        date: today,
+        content: 'Google hesabı ile yeni sınıf oturma planı ve Google Drive senkronizasyonu başlatıldı.',
+        teacherId: teacher.id,
+        teacherName: teacher.name,
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    syncStatus: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+}
+

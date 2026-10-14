@@ -15,6 +15,7 @@ import {
   setCurrentTeacherId,
   getActiveCLassId,
   setActiveClassId,
+  createStarterClassroomForGoogleTeacher,
 } from './services/storageService';
 import { initAuth, googleSignIn, logout, getAccessToken } from './services/firebaseAuth';
 import {
@@ -90,33 +91,64 @@ export default function App() {
     setClassrooms(seed.classrooms);
   }, []);
 
+  // Synchronize Google User into Teacher and Classroom state
+  const syncGoogleUserTeacher = useCallback(
+    (user: any, token: string | null) => {
+      setIsGoogleConnected(true);
+      setGoogleUser(user);
+      if (token) setGoogleToken(token);
+
+      const googleTeacherId = `google_${user.uid}`;
+      const googleTeacherName = user.displayName || user.email?.split('@')[0] || 'Google Öğretmen';
+
+      const googleTeacher: Teacher = {
+        id: googleTeacherId,
+        name: googleTeacherName,
+        email: user.email || 'ogretmen@meb.k12.tr',
+        branch: 'Rehber / Danışman Öğretmen',
+        avatar: user.photoURL || undefined,
+        isGoogleUser: true,
+      };
+
+      // 1. Update teachers state and storage with Google teacher at top
+      setTeachers((prev) => {
+        const withoutGoogle = prev.filter((t) => t.id !== googleTeacherId);
+        const updated = [googleTeacher, ...withoutGoogle];
+        saveTeachers(updated);
+        return updated;
+      });
+
+      // 2. Set as active teacher
+      setTeacherIdState(googleTeacherId);
+      setCurrentTeacherId(googleTeacherId);
+
+      // 3. Ensure Google Teacher has their own classroom
+      setClassrooms((prev) => {
+        const existingClass = prev.find((c) => c.teacherId === googleTeacherId);
+        if (!existingClass) {
+          const starterClass = createStarterClassroomForGoogleTeacher(googleTeacher);
+          const updated = [starterClass, ...prev];
+          saveClassrooms(updated);
+          setClassIdState(starterClass.id);
+          setActiveClassId(starterClass.id);
+          return updated;
+        } else {
+          setClassIdState(existingClass.id);
+          setActiveClassId(existingClass.id);
+          return prev;
+        }
+      });
+    },
+    []
+  );
+
   // Initialize Firebase Auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
       (user, token) => {
-        setIsGoogleConnected(true);
-        setGoogleUser(user);
-        setGoogleToken(token);
-
-        // Check if teacher persona for this Google user already exists
-        const googleTeacherId = `google_${user.uid}`;
-        setTeachers((prev) => {
-          const exists = prev.find((t) => t.id === googleTeacherId);
-          if (!exists) {
-            const newTeacher: Teacher = {
-              id: googleTeacherId,
-              name: user.displayName || 'Google Öğretmen',
-              email: user.email || 'ogretmen@meb.k12.tr',
-              branch: 'Branş Öğretmeni',
-              avatar: user.photoURL || undefined,
-              isGoogleUser: true,
-            };
-            const updated = [newTeacher, ...prev];
-            saveTeachers(updated);
-            return updated;
-          }
-          return prev;
-        });
+        if (user) {
+          syncGoogleUserTeacher(user, token);
+        }
       },
       () => {
         setIsGoogleConnected(false);
@@ -126,7 +158,7 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [syncGoogleUserTeacher]);
 
   // Current Active Teacher
   const activeTeacher = useMemo(() => {
@@ -173,13 +205,8 @@ export default function App() {
     try {
       const res = await googleSignIn();
       if (res) {
-        setIsGoogleConnected(true);
-        setGoogleUser(res.user);
-        setGoogleToken(res.accessToken);
-        const googleTeacherId = `google_${res.user.uid}`;
-        setTeacherIdState(googleTeacherId);
-        setCurrentTeacherId(googleTeacherId);
-        showToast(`Google ile giriş yapıldı: ${res.user.displayName || res.user.email}`, 'success');
+        syncGoogleUserTeacher(res.user, res.accessToken);
+        showToast(`Google ile başarıyla giriş yapıldı: ${res.user.displayName || res.user.email}`, 'success');
       }
     } catch (err: any) {
       showToast(`Giriş başarısız: ${err?.message || 'Bilinmeyen hata'}`, 'warning');
@@ -192,8 +219,15 @@ export default function App() {
     setIsGoogleConnected(false);
     setGoogleUser(null);
     setGoogleToken(null);
-    setTeacherIdState(teachers[0].id);
-    setCurrentTeacherId(teachers[0].id);
+    // Return to first demo teacher
+    const defaultTeacher = teachers.find((t) => !t.isGoogleUser) || teachers[0];
+    setTeacherIdState(defaultTeacher.id);
+    setCurrentTeacherId(defaultTeacher.id);
+    const defaultClasses = classrooms.filter((c) => c.teacherId === defaultTeacher.id);
+    if (defaultClasses.length > 0) {
+      setClassIdState(defaultClasses[0].id);
+      setActiveClassId(defaultClasses[0].id);
+    }
     showToast('Google oturumu kapatıldı. Demo moduna dönüldü.', 'info');
   };
 
@@ -827,6 +861,7 @@ export default function App() {
         onSelectTeacher={handleSelectTeacher}
         onOpenGoogleLogin={handleGoogleLogin}
         isGoogleConnected={isGoogleConnected}
+        googleUser={googleUser}
       />
 
       {/* 5. Student Roster Management Modal */}
