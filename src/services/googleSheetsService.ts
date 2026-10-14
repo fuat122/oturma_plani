@@ -16,9 +16,9 @@ export interface SheetGridData {
 }
 
 /**
- * Builds the tabular matrix according to the business rules:
- * - Rows 1..23: Student Seat Code (Col A), Student Name (Col B), Date Comments (Cols C, D, E...)
- * - Row 24: Class General Notes ("SINIF GENEL NOTLARI" in Col A, notes by date in Cols C, D, E...)
+ * Builds the tabular matrix according to the classroom seating layout:
+ * - Rows for each seat (Col A: Sıra Kodu, Col B: Öğrenci Adı, Cols C, D...: Yorum Tarihleri)
+ * - Final Row: "SINIF GENEL NOTLARI"
  * - Comments formatted as `[Öğrenci Adı]: Yorum metni...`
  */
 export function buildClassroomSheetMatrix(classroom: Classroom): {
@@ -40,22 +40,19 @@ export function buildClassroomSheetMatrix(classroom: Classroom): {
 
   const dates = Array.from(dateSet).sort();
 
-  // Create 24 rows
-  // Row 1 to 23 for students (up to 23 capacity)
-  // Row 24 for General Class Notes
+  // Create rows matching total classroom seats (e.g. 24 seats)
+  const totalSlots = Math.max(classroom.seats.length, 24);
   const values: string[][] = [];
 
-  // Header row (Row 1): Sıra Kodu | Öğrenci Adı | Tarih 1 | Tarih 2 ...
-  // To strictly align with user's row 1..23 student list + row 24 general notes:
-  // We can populate rows for students (indices 0..22 -> Rows 1..23)
-  for (let i = 0; i < 23; i++) {
+  for (let i = 0; i < totalSlots; i++) {
     const student = classroom.students[i];
+    const seat = classroom.seats[i];
     const rowValues: string[] = [];
 
     if (student) {
-      // Find current seat code
-      const seat = classroom.seats.find((s) => s.studentId === student.id);
-      const seatCode = seat ? seat.code : (student.seatCode || 'Atanmadı');
+      // Find current assigned seat for this student
+      const assignedSeat = classroom.seats.find((s) => s.studentId === student.id);
+      const seatCode = assignedSeat ? assignedSeat.code : (student.seatCode || `Sıra #${i + 1}`);
       rowValues.push(seatCode); // Col A
       rowValues.push(`${student.fullName} (${student.studentNumber})`); // Col B
 
@@ -75,7 +72,8 @@ export function buildClassroomSheetMatrix(classroom: Classroom): {
       });
     } else {
       // Empty slot placeholder
-      rowValues.push(`Sıra #${i + 1} (Boş)`);
+      const slotCode = seat ? seat.code : `Sıra #${i + 1}`;
+      rowValues.push(`${slotCode} (Boş)`);
       rowValues.push('-');
       dates.forEach(() => rowValues.push(''));
     }
@@ -83,20 +81,20 @@ export function buildClassroomSheetMatrix(classroom: Classroom): {
     values.push(rowValues);
   }
 
-  // Row 24: Sınıf Genel Notları
-  const row24Values: string[] = ['SINIF GENEL NOTLARI', 'Sınıf Geneli'];
+  // Row after students: Sınıf Genel Notları
+  const rowGeneralNotes: string[] = ['SINIF GENEL NOTLARI', 'Sınıf Geneli'];
   dates.forEach((date) => {
     const notesForDate = classroom.classNotes.filter((cn) => cn.date === date);
     if (notesForDate.length > 0) {
       const combined = notesForDate
         .map((cn) => `[Genel Not - ${cn.teacherName}]: ${cn.content}`)
         .join(' \n');
-      row24Values.push(combined);
+      rowGeneralNotes.push(combined);
     } else {
-      row24Values.push('');
+      rowGeneralNotes.push('');
     }
   });
-  values.push(row24Values);
+  values.push(rowGeneralNotes);
 
   return { dates, values };
 }
@@ -118,9 +116,9 @@ export async function createGoogleSpreadsheet(
     sheets: [
       {
         properties: {
-          title: 'Oturma Planı ve Takip',
+          title: 'Oturma_Plani',
           gridProperties: {
-            rowCount: 30,
+            rowCount: 35,
             columnCount: 15,
             frozenRowCount: 1,
             frozenColumnCount: 2,
@@ -141,6 +139,7 @@ export async function createGoogleSpreadsheet(
 
   if (!response.ok) {
     const errText = await response.text();
+    console.error('Google Sheets API Error on create:', errText);
     throw new Error(`Google E-Tablo oluşturulamadı: ${errText}`);
   }
 
@@ -149,7 +148,11 @@ export async function createGoogleSpreadsheet(
   const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
   // Synchronize initial data
-  await syncClassroomToGoogleSheet(accessToken, spreadsheetId, classroom);
+  try {
+    await syncClassroomToGoogleSheet(accessToken, spreadsheetId, classroom);
+  } catch (syncErr) {
+    console.warn('Initial data sync warning:', syncErr);
+  }
 
   return { spreadsheetId, spreadsheetUrl };
 }
@@ -168,8 +171,10 @@ export async function syncClassroomToGoogleSheet(
   const headerRow = ['Sıra Kodu (Yer)', 'Öğrenci Adı Soyadı', ...dates.map((d) => `Tarih: ${d}`)];
   const fullMatrix = [headerRow, ...values];
 
-  // Update sheet with full matrix
-  const range = `Oturma Planı ve Takip!A1:${getColumnLetter(fullMatrix[0].length)}${fullMatrix.length}`;
+  const colLetter = getColumnLetter(fullMatrix[0].length);
+  const rowCount = fullMatrix.length;
+  // Use escaped single quotes around sheet title to strictly follow Sheets API range specification
+  const range = `'Oturma_Plani'!A1:${colLetter}${rowCount}`;
 
   const updateResponse = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
@@ -191,12 +196,13 @@ export async function syncClassroomToGoogleSheet(
 
   if (!updateResponse.ok) {
     const errText = await updateResponse.text();
+    console.error('Google Sheets API update error:', errText);
     throw new Error(`Google E-Tablo güncellemesi başarısız: ${errText}`);
   }
 
-  // Format header row and Row 24 (General Notes) for professional look
+  // Format header row and General Notes for professional look
   try {
-    await applySpreadsheetStyling(accessToken, spreadsheetId);
+    await applySpreadsheetStyling(accessToken, spreadsheetId, fullMatrix.length);
   } catch (styleErr) {
     console.warn('Formatting could not be applied, but data was synced:', styleErr);
   }
@@ -210,7 +216,7 @@ export async function syncClassroomToGoogleSheet(
 /**
  * Applies elegant header styles to Google Sheets
  */
-async function applySpreadsheetStyling(accessToken: string, spreadsheetId: string) {
+async function applySpreadsheetStyling(accessToken: string, spreadsheetId: string, totalRows: number) {
   const requests = [
     {
       repeatCell: {
@@ -233,8 +239,8 @@ async function applySpreadsheetStyling(accessToken: string, spreadsheetId: strin
       repeatCell: {
         range: {
           sheetId: 0,
-          startRowIndex: 24, // Row 25 in 1-based (Row 24 general notes)
-          endRowIndex: 25,
+          startRowIndex: totalRows - 1,
+          endRowIndex: totalRows,
         },
         cell: {
           userEnteredFormat: {

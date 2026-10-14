@@ -42,7 +42,9 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
   onClearAllStudents,
   isExportingPDF,
 }) => {
-  const capacityPercent = Math.round((classroom.students.length / classroom.maxCapacity) * 100);
+  const totalSeats = classroom.seats.length || 24;
+  const capacityPercent = Math.round((classroom.students.length / totalSeats) * 100);
+  const emptySeatsCount = Math.max(0, totalSeats - classroom.students.length);
 
   return (
     <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs mb-6 no-print">
@@ -112,10 +114,10 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
               />
             </div>
             <span className="text-xs font-mono font-bold text-slate-700">
-              {classroom.students.length} / {classroom.maxCapacity} Öğrenci
+              {classroom.students.length} / {totalSeats} Öğrenci
             </span>
-            <span className="text-[11px] text-slate-400">
-              (Maksimum Kapasite: 23)
+            <span className="text-[11px] text-slate-500 font-medium">
+              (Sınıf Sıra Sayısı: {totalSeats} • {emptySeatsCount > 0 ? `${emptySeatsCount} Boş Sıra` : 'Tüm Sıralar Dolu'})
             </span>
           </div>
         </div>

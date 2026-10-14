@@ -689,20 +689,42 @@ export default function App() {
       action: async () => {
         setIsSyncingSheets(true);
         try {
-          const token = googleToken || (await getAccessToken());
+          let token = googleToken || (await getAccessToken());
 
-          if (token && currentClassroom.googleSpreadsheetId) {
-            // Live Google Sheets API Call
-            await syncClassroomToGoogleSheet(token, currentClassroom.googleSpreadsheetId, currentClassroom);
+          // If token is missing, prompt user via googleSignIn to get fresh OAuth access token
+          if (!token) {
+            const loginResult = await googleSignIn();
+            if (loginResult) {
+              token = loginResult.accessToken;
+              setGoogleToken(token);
+              setIsGoogleConnected(true);
+              setGoogleUser(loginResult.user);
+            }
+          }
+
+          if (!token) {
+            showToast('Google Drive erişim izni alınamadı. Lütfen Google ile giriş yapınız.', 'warning');
+            return;
+          }
+
+          // Check if this classroom already has a real Google Spreadsheet
+          const hasRealSpreadsheet =
+            currentClassroom.googleSpreadsheetId &&
+            !currentClassroom.googleSpreadsheetId.startsWith('mock_');
+
+          if (hasRealSpreadsheet) {
+            // Live Google Sheets API Call to update existing spreadsheet
+            await syncClassroomToGoogleSheet(token, currentClassroom.googleSpreadsheetId!, currentClassroom);
             const updatedClass = {
               ...currentClassroom,
               syncStatus: 'synced' as const,
               lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
             };
             updateClassroomState(updatedClass);
-            showToast('Google Drive E-Tablosu başarıyla canlı senkronize edildi.', 'success');
-          } else if (token && !currentClassroom.googleSpreadsheetId) {
-            // Create spreadsheet on the fly
+            showToast('Google Drive E-Tablosu başarıyla senkronize edildi.', 'success');
+          } else {
+            // Create a real spreadsheet on user's Google Drive
+            showToast('Google Drive hesabınızda E-Tablo oluşturuluyor...', 'info');
             const { spreadsheetId, spreadsheetUrl } = await createGoogleSpreadsheet(
               token,
               currentClassroom
@@ -715,19 +737,13 @@ export default function App() {
               lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
             };
             updateClassroomState(updatedClass);
-            showToast(`Google Drive'da 'Sinif_Oturma_Plani_${currentClassroom.name}' oluşturuldu ve senkronize edildi.`, 'success');
-          } else {
-            // Demo Mode Simulation
-            const updatedClass = {
-              ...currentClassroom,
-              syncStatus: 'synced' as const,
-              lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            };
-            updateClassroomState(updatedClass);
-            showToast('E-Tablo verisi matrisi başarıyla güncellendi (Test Modu Simülatörü).', 'success');
+            showToast(`Google Drive'da 'Sinif_Oturma_Plani_${currentClassroom.name}' oluşturuldu ve senkronize edildi!`, 'success');
+            // Open the real Google Drive spreadsheet in new tab
+            window.open(spreadsheetUrl, '_blank');
           }
         } catch (err: any) {
-          showToast(`Senkronizasyon hatası: ${err?.message || 'Bağlantı sorunu'}`, 'warning');
+          console.error('Google Sheets sync error:', err);
+          showToast(`E-Tablo hatası: ${err?.message || 'İşlem tamamlanamadı'}`, 'warning');
         } finally {
           setIsSyncingSheets(false);
         }

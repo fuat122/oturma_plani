@@ -26,14 +26,15 @@ export const StudentManagementModal: React.FC<StudentManagementModalProps> = ({
   const [gender, setGender] = useState<'K' | 'E'>('E');
   const [error, setError] = useState<string | null>(null);
 
-  const isFull = classroom.students.length >= classroom.maxCapacity;
+  const totalSeats = classroom.seats.length || 24;
+  const isFull = classroom.students.length >= totalSeats;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (isFull) {
-      setError(`Bu sınıf maksimum kapasiteye (${classroom.maxCapacity} öğrenci) ulaşmıştır. Yeni öğrenci eklenemez.`);
+      setError(`Bu sınıfın tüm sıraları (${totalSeats} sıra) dolmuştur. Yeni öğrenci eklenemez.`);
       return;
     }
 
@@ -72,7 +73,7 @@ export const StudentManagementModal: React.FC<StudentManagementModalProps> = ({
                 {classroom.name} Öğrenci Kadrosu
               </h2>
               <p className="text-xs text-slate-500">
-                Kapasite: <strong className="text-slate-800">{classroom.students.length} / {classroom.maxCapacity}</strong> Öğrenci
+                Kapasite: <strong className="text-slate-800">{classroom.students.length} / {totalSeats}</strong> Öğrenci ({totalSeats} Sıra)
               </p>
             </div>
           </div>
@@ -148,7 +149,7 @@ export const StudentManagementModal: React.FC<StudentManagementModalProps> = ({
             </div>
             {isFull && (
               <p className="text-[11px] text-amber-700 font-medium">
-                ⚠️ Sınıf kapasitesi en fazla 23 öğrenci ile sınırlandırılmıştır.
+                ⚠️ Sınıf kapasitesi sıra sayısı ({totalSeats} sıra) ile sınırlıdır.
               </p>
             )}
           </form>

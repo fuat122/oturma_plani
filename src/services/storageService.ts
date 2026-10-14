@@ -237,16 +237,13 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
     grade: '9. Sınıf',
     branchName: 'Sayısal Odaklı Anadolu Lisesi Programı',
     academicYear: '2026-2027',
-    maxCapacity: 23,
+    maxCapacity: 24,
     layoutType: '3-block-standard',
     students: students9A,
     seats: seats9A,
     observations: obs9A,
     classNotes: notes9A,
-    googleSpreadsheetId: 'mock_sheet_9a_123',
-    googleSpreadsheetUrl: 'https://docs.google.com/spreadsheets/d/mock_sheet_9a_123/edit',
-    lastSyncedAt: '2026-10-14 11:30',
-    syncStatus: 'synced',
+    syncStatus: 'pending',
     createdAt: '2026-09-15T08:00:00Z',
   };
 
@@ -287,7 +284,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
     grade: '10. Sınıf',
     branchName: 'Edebiyat & Sosyal Bilimler Ağırlıklı',
     academicYear: '2026-2027',
-    maxCapacity: 23,
+    maxCapacity: 24,
     layoutType: '3-block-standard',
     students: students10B,
     seats: seats10B,
@@ -316,8 +313,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
         createdAt: '2026-10-13T15:00:00Z',
       },
     ],
-    lastSyncedAt: '2026-10-13 16:00',
-    syncStatus: 'synced',
+    syncStatus: 'pending',
     createdAt: '2026-09-16T09:00:00Z',
   };
 
@@ -355,7 +351,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
     grade: 'Hazırlık',
     branchName: 'Yoğunlaştırılmış İngilizce Hazırlık Programı',
     academicYear: '2026-2027',
-    maxCapacity: 23,
+    maxCapacity: 24,
     layoutType: '3-block-standard',
     students: studentsHazirlik,
     seats: seatsHazirlik,
@@ -371,8 +367,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
         createdAt: '2026-10-14T08:30:00Z',
       },
     ],
-    lastSyncedAt: '2026-10-14 08:35',
-    syncStatus: 'synced',
+    syncStatus: 'pending',
     createdAt: '2026-09-14T08:00:00Z',
   };
 

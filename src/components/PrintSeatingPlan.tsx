@@ -37,7 +37,7 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
           </div>
           <div>
             <span className="text-slate-400">Öğrenci Sayısı:</span>{' '}
-            <strong className="text-slate-800">{classroom.students.length} / {classroom.maxCapacity}</strong>
+            <strong className="text-slate-800">{classroom.students.length} / {classroom.seats.length} (Kapasite: {classroom.seats.length} Sıra)</strong>
           </div>
           <div>
             <span className="text-slate-400">Düzenleme Tarihi:</span>{' '}

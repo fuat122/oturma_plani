@@ -101,9 +101,10 @@ export const NewClassModal: React.FC<NewClassModalProps> = ({
       });
     }
 
-    // Capacity validation: Strictly capped at 23 students
-    if (students.length > 23) {
-      setError('Sistem kuralı: Bir sınıfta en fazla 23 öğrenci bulunabilir.');
+    // Capacity validation: Match physical seats (24 seats for 3-block)
+    const maxClassCapacity = seats.length || 24;
+    if (students.length > maxClassCapacity) {
+      setError(`Sistem kuralı: Sınıf kapasitesi sıra sayısı (${maxClassCapacity} sıra) ile sınırlıdır.`);
       return;
     }
 
@@ -122,7 +123,7 @@ export const NewClassModal: React.FC<NewClassModalProps> = ({
       grade,
       branchName: branchName.trim() || undefined,
       academicYear: '2026-2027',
-      maxCapacity: 23,
+      maxCapacity: maxClassCapacity,
       layoutType: layoutType as any,
       students,
       seats,
