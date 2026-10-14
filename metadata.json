@@ -1,0 +1,6 @@
+{
+  "name": "Akıllı Sınıf Oturma Planı ve Öğrenci Takip Sistemi",
+  "description": "Lise öğretmenleri için sürükle-bırak destekli, Google Drive ve E-Tablo senkronizasyonlu akıllı sınıf oturma planı ve öğrenci gelişim takip sistemi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
