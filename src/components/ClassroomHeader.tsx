@@ -8,44 +8,44 @@ import {
   Shuffle,
   RotateCcw,
   BookOpen,
-  Sparkles,
-  ExternalLink,
   ShieldCheck,
-  CheckCircle,
   Trash2,
+  Cloud,
+  CheckCircle2,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 
 interface ClassroomHeaderProps {
   classroom: Classroom;
   activeTeacher: Teacher;
   onExportPDF: () => void;
+  onExportExcel: () => void;
   onPrint: () => void;
   onOpenReports: () => void;
-  onOpenSheetsPreview: () => void;
   onOpenStudentManagement: () => void;
   onShuffleSeats: () => void;
   onResetSeats: () => void;
   onClearAllStudents: () => void;
-  onOpenOrCreateDriveSheet: () => void;
   isExportingPDF: boolean;
-  isSyncingSheets?: boolean;
+  isExportingExcel?: boolean;
+  isFirestoreSaving?: boolean;
 }
 
 export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
   classroom,
   activeTeacher,
   onExportPDF,
+  onExportExcel,
   onPrint,
   onOpenReports,
-  onOpenSheetsPreview,
   onOpenStudentManagement,
   onShuffleSeats,
   onResetSeats,
   onClearAllStudents,
-  onOpenOrCreateDriveSheet,
   isExportingPDF,
-  isSyncingSheets = false,
+  isExportingExcel = false,
+  isFirestoreSaving = false,
 }) => {
   const totalSeats = classroom.seats.length > 0 ? classroom.seats.length : (classroom.maxCapacity || 24);
   const capacityPercent = Math.round((classroom.students.length / totalSeats) * 100);
@@ -54,7 +54,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
   return (
     <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs mb-6 no-print">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        {/* Left: Class Information & Google Drive Link */}
+        {/* Left: Class Information & Cloud Firestore Status */}
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
@@ -63,9 +63,18 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             <span className="text-xs font-semibold text-slate-500 font-mono">
               Öğretim Yılı: {classroom.academicYear}
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Yetkili: {activeTeacher.name}
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              Yetkili Öğretmen: {activeTeacher.name}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
+              <Cloud className="w-3 h-3 text-sky-600" />
+              <span>Firebase Firestore</span>
+              {isFirestoreSaving ? (
+                <RefreshCw className="w-2.5 h-2.5 text-amber-500 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              )}
             </span>
           </div>
 
@@ -73,52 +82,6 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {classroom.name} Sınıfı Oturma Düzeni
             </h1>
-
-            {/* Direct Google Drive Sheet Action Button */}
-            {classroom.googleSpreadsheetUrl ? (
-              <div className="inline-flex items-center gap-1.5">
-                <a
-                  href={classroom.googleSpreadsheetUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all hover:scale-102"
-                  title="Google Drive üzerinde oluşturulan E-Tablo dosyasını yeni sekmede açın ve düzenleyin"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>Google Drive E-Tabloyu Aç</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-                <button
-                  type="button"
-                  onClick={onOpenOrCreateDriveSheet}
-                  disabled={isSyncingSheets}
-                  className="p-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs transition-all cursor-pointer"
-                  title="E-Tablo verilerini Google Drive ile hemen yeniden senkronize et"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSheets ? 'animate-spin text-emerald-600' : ''}`} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenOrCreateDriveSheet}
-                disabled={isSyncingSheets}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-102 cursor-pointer disabled:opacity-50"
-                title="Bu sınıf için Google Drive hesabınızda anında E-Tablo oluşturun ve açın"
-              >
-                {isSyncingSheets ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {isSyncingSheets
-                    ? 'Drive\'da E-Tablo Oluşturuluyor...'
-                    : 'Google Drive E-Tabloyu Aç / Oluştur'}
-                </span>
-                {!isSyncingSheets && <ExternalLink className="w-3 h-3" />}
-              </button>
-            )}
           </div>
 
           {classroom.branchName && (
@@ -148,13 +111,14 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Action Buttons Group */}
+        {/* Right: Action Buttons Group with PDF İndir and Excel (.xlsx) İndir */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           {/* Öğrenci Raporları & Gözlemler Butonu */}
           <button
             type="button"
             onClick={onOpenReports}
             className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-indigo-500/20 hover:shadow-md transition-all cursor-pointer"
+            title="Tarih bazlı öğrenci gözlem ve yorumlarını yönetin"
           >
             <BookOpen className="w-4 h-4" />
             <span>Öğrenci Raporları & Gözlemler</span>
@@ -165,16 +129,30 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             )}
           </button>
 
-          {/* TEK TIKLA PDF ÇIKTISI BUTONU */}
+          {/* PDF İNDİR BUTONU */}
           <button
             type="button"
             onClick={onExportPDF}
             disabled={isExportingPDF}
             className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-            title="Sadece görsel oturma planını A4 PDF olarak indir"
+            title="A4 Yatay formatında yüksek çözünürlüklü Oturma Planı PDF'i indir"
           >
             <FileText className="w-4 h-4 text-emerald-400" />
-            <span>{isExportingPDF ? 'PDF Hazırlanıyor...' : 'Tek Tıkla PDF Çıktısı'}</span>
+            <span>{isExportingPDF ? 'PDF Hazırlanıyor...' : 'PDF İndir'}</span>
+            <Download className="w-3.5 h-3.5 text-slate-300" />
+          </button>
+
+          {/* EXCEL (.XLSX) İNDİR BUTONU */}
+          <button
+            type="button"
+            onClick={onExportExcel}
+            disabled={isExportingExcel}
+            className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+            title="Oturma Planı, Öğrenci Listesi ve Tarihli Gözlemleri Excel (.xlsx) formatında indir"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+            <span>{isExportingExcel ? 'Excel Hazırlanıyor...' : 'Excel (.xlsx) İndir'}</span>
+            <Download className="w-3.5 h-3.5 text-emerald-200" />
           </button>
 
           {/* Tarayıcı Yazdır Butonu */}
@@ -185,17 +163,6 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             title="Yazıcıdan Çıktı Al"
           >
             <Printer className="w-4 h-4" />
-          </button>
-
-          {/* Google E-Tablo Önizleme & Senkronizasyon Butonu */}
-          <button
-            type="button"
-            onClick={onOpenSheetsPreview}
-            className="px-3.5 py-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-            title="E-Tablo matrisini ve bağlantısını görüntüle"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>E-Tablo</span>
           </button>
 
           {/* Öğrenci Kadrosu Butonu */}

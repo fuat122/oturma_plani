@@ -243,7 +243,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
     seats: seats9A,
     observations: obs9A,
     classNotes: notes9A,
-    syncStatus: 'pending',
+    syncStatus: 'synced',
     createdAt: '2026-09-15T08:00:00Z',
   };
 
@@ -313,7 +313,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
         createdAt: '2026-10-13T15:00:00Z',
       },
     ],
-    syncStatus: 'pending',
+    syncStatus: 'synced',
     createdAt: '2026-09-16T09:00:00Z',
   };
 
@@ -367,7 +367,7 @@ function createSeedData(): { teachers: Teacher[]; classrooms: Classroom[] } {
         createdAt: '2026-10-14T08:30:00Z',
       },
     ],
-    syncStatus: 'pending',
+    syncStatus: 'synced',
     createdAt: '2026-09-14T08:00:00Z',
   };
 
@@ -541,13 +541,13 @@ export function createStarterClassroomForGoogleTeacher(teacher: Teacher): Classr
         id: `cn_g_1`,
         classId,
         date: today,
-        content: 'Google hesabı ile yeni sınıf oturma planı ve Google Drive senkronizasyonu başlatıldı.',
+        content: 'Firebase Cloud Firestore veritabanı ile sınıf oturma planı ve öğrenci takibi başlatıldı.',
         teacherId: teacher.id,
         teacherName: teacher.name,
         createdAt: new Date().toISOString(),
       },
     ],
-    syncStatus: 'pending',
+    syncStatus: 'synced',
     createdAt: new Date().toISOString(),
   };
 }

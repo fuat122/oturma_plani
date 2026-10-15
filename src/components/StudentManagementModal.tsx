@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Classroom, Student } from '../types';
-import { X, UserPlus, Users, Trash2, Edit2, AlertCircle, Check, FileSpreadsheet, ExternalLink } from 'lucide-react';
+import { X, UserPlus, Users, Trash2, Edit2, AlertCircle, Check, Cloud } from 'lucide-react';
 
 interface StudentManagementModalProps {
   isOpen: boolean;
@@ -229,26 +229,15 @@ export const StudentManagementModal: React.FC<StudentManagementModalProps> = ({
           )}
         </div>
 
-        {/* Google Drive Sheet Link Banner (if linked) */}
-        {classroom.googleSpreadsheetUrl && (
-          <div className="px-5 py-2.5 bg-emerald-50/80 border-t border-emerald-200 flex items-center justify-between text-xs text-emerald-900">
-            <div className="flex items-center gap-2 min-w-0">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="truncate">
-                Google E-Tablo: <strong>Sinif_Oturma_Plani_{classroom.name}</strong>
-              </span>
-            </div>
-            <a
-              href={classroom.googleSpreadsheetUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1 shrink-0 transition-colors shadow-2xs"
-            >
-              <span>Drive'da Aç</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
+        {/* Firebase Cloud Firestore Banner */}
+        <div className="px-5 py-2.5 bg-sky-50/80 border-t border-sky-200 flex items-center justify-between text-xs text-sky-900">
+          <div className="flex items-center gap-2 min-w-0">
+            <Cloud className="w-4 h-4 text-sky-600 shrink-0" />
+            <span className="truncate">
+              Öğrenci kadrosu ve oturma düzeni <strong>Firebase Cloud Firestore</strong> üzerinde otomatik güncellenir.
+            </span>
           </div>
-        )}
+        </div>
 
         {/* Footer */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">

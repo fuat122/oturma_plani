@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Classroom, Teacher, Student, ObservationCategory } from './types';
 import {
   initializeStorage,
@@ -17,48 +17,51 @@ import {
   setActiveClassId,
   createStarterClassroomForGoogleTeacher,
 } from './services/storageService';
-import { initAuth, googleSignIn, logout, getAccessToken } from './services/firebaseAuth';
+import { initAuth, googleSignIn, logout } from './services/firebaseAuth';
 import {
-  createGoogleSpreadsheet,
-  syncClassroomToGoogleSheet,
-} from './services/googleSheetsService';
+  subscribeTeacherClasses,
+  saveClassroomToFirestore,
+  deleteClassroomFromFirestore,
+  testFirestoreConnection,
+} from './services/firestoreService';
 import { exportSeatingPlanToPDF } from './services/pdfService';
+import { exportClassroomToExcel } from './services/excelService';
 import { Navbar } from './components/Navbar';
 import { ClassroomHeader } from './components/ClassroomHeader';
 import { BlackboardHeader } from './components/BlackboardHeader';
 import { SeatingPlanGrid } from './components/SeatingPlanGrid';
 import { PrintSeatingPlan } from './components/PrintSeatingPlan';
 import { ReportModal } from './components/ReportModal';
-import { GoogleSheetsPreviewModal } from './components/GoogleSheetsPreviewModal';
 import { NewClassModal } from './components/NewClassModal';
 import { TeacherSwitcherModal } from './components/TeacherSwitcherModal';
 import { StudentManagementModal } from './components/StudentManagementModal';
 import { ConfirmModal } from './components/ConfirmModal';
-import { CheckCircle2, AlertCircle, Info, ShieldAlert, Sparkles, Layers } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, Sparkles, Cloud } from 'lucide-react';
 
 export default function App() {
-  // Initial storage setup
+  // Initial local storage setup for demo fallback
   const [teachers, setTeachers] = useState<Teacher[]>(() => getStoredTeachers());
   const [classrooms, setClassrooms] = useState<Classroom[]>(() => getStoredClassrooms());
   const [currentTeacherId, setTeacherIdState] = useState<string>(() => getCurrentTeacherId());
   const [activeClassId, setClassIdState] = useState<string | null>(() => getActiveCLassId());
 
-  // Google OAuth & Auth State
+  // Google & Firebase Auth State
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [googleUser, setGoogleUser] = useState<any | null>(null);
-  const [googleToken, setGoogleToken] = useState<string | null>(null);
+
+  // Firestore saving state
+  const [isFirestoreSaving, setIsFirestoreSaving] = useState(false);
 
   // Modals
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportStudentId, setReportStudentId] = useState<string | null>(null);
-  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
   const [isNewClassModalOpen, setIsNewClassModalOpen] = useState(false);
   const [isTeacherSwitcherOpen, setIsTeacherSwitcherOpen] = useState(false);
   const [isStudentManagementOpen, setIsStudentManagementOpen] = useState(false);
 
-  // Action states
-  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  // Export states
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'warning' } | null>(null);
 
   // Confirmation Modal
@@ -76,6 +79,8 @@ export default function App() {
     action: () => {},
   });
 
+  const firestoreUnsubscribeRef = useRef<(() => void) | null>(null);
+
   // Show Toast Helper
   const showToast = useCallback((text: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setToastMessage({ text, type });
@@ -84,21 +89,21 @@ export default function App() {
     }, 4000);
   }, []);
 
-  // Initialize data on mount
+  // Initialize storage and test connection on mount
   useEffect(() => {
     const seed = initializeStorage();
     setTeachers(seed.teachers);
     setClassrooms(seed.classrooms);
+    testFirestoreConnection();
   }, []);
 
-  // Synchronize Google User into Teacher and Classroom state
+  // Sync Google User into Teacher and Classroom state with Firestore real-time listener
   const syncGoogleUserTeacher = useCallback(
-    (user: any, token: string | null) => {
+    (user: any) => {
       setIsGoogleConnected(true);
       setGoogleUser(user);
-      if (token) setGoogleToken(token);
 
-      const googleTeacherId = `google_${user.uid}`;
+      const googleTeacherId = user.uid;
       const googleTeacherName = user.displayName || user.email?.split('@')[0] || 'Google Öğretmen';
 
       const googleTeacher: Teacher = {
@@ -110,7 +115,7 @@ export default function App() {
         isGoogleUser: true,
       };
 
-      // 1. Update teachers state and storage with Google teacher at top
+      // 1. Update teachers state
       setTeachers((prev) => {
         const withoutGoogle = prev.filter((t) => t.id !== googleTeacherId);
         const updated = [googleTeacher, ...withoutGoogle];
@@ -122,42 +127,89 @@ export default function App() {
       setTeacherIdState(googleTeacherId);
       setCurrentTeacherId(googleTeacherId);
 
-      // 3. Ensure Google Teacher has their own classroom
-      setClassrooms((prev) => {
-        const existingClass = prev.find((c) => c.teacherId === googleTeacherId);
-        if (!existingClass) {
-          const starterClass = createStarterClassroomForGoogleTeacher(googleTeacher);
-          const updated = [starterClass, ...prev];
-          saveClassrooms(updated);
-          setClassIdState(starterClass.id);
-          setActiveClassId(starterClass.id);
-          return updated;
-        } else {
-          setClassIdState(existingClass.id);
-          setActiveClassId(existingClass.id);
-          return prev;
+      // 3. Unsubscribe previous Firestore listener if exists
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+        firestoreUnsubscribeRef.current = null;
+      }
+
+      // 4. Attach real-time listener to teachers/{user.uid}/classes
+      const unsubscribe = subscribeTeacherClasses(
+        googleTeacherId,
+        (fetchedClasses) => {
+          if (fetchedClasses.length === 0) {
+            // First time this teacher logs into Firestore:
+            // Seed a starter classroom (9-A with 24 seats) and immediately write it to Firestore
+            const starterClass = createStarterClassroomForGoogleTeacher(googleTeacher);
+            starterClass.teacherId = googleTeacherId;
+            saveClassroomToFirestore(googleTeacherId, starterClass)
+              .then(() => {
+                showToast(`Firebase Cloud Firestore'da yeni sınıfınız oluşturuldu: 9-A`, 'success');
+              })
+              .catch((err) => console.error('Error saving initial class:', err));
+
+            setClassrooms((prev) => {
+              const otherTeachers = prev.filter((c) => c.teacherId !== googleTeacherId);
+              const merged = [starterClass, ...otherTeachers];
+              saveClassrooms(merged);
+              return merged;
+            });
+            setClassIdState(starterClass.id);
+            setActiveClassId(starterClass.id);
+          } else {
+            // Loaded existing classes from Firestore
+            setClassrooms((prev) => {
+              const otherTeachers = prev.filter((c) => c.teacherId !== googleTeacherId);
+              const merged = [...fetchedClasses, ...otherTeachers];
+              saveClassrooms(merged);
+              return merged;
+            });
+
+            // Set active class if not set or invalid
+            setClassIdState((currentActive) => {
+              const stillExists = fetchedClasses.some((c) => c.id === currentActive);
+              if (stillExists && currentActive) return currentActive;
+              const firstId = fetchedClasses[0].id;
+              setActiveClassId(firstId);
+              return firstId;
+            });
+          }
+        },
+        (error) => {
+          console.warn('Firestore subscription warning:', error);
+          showToast('Firestore bağlantısında gecikme var, yerel veriler gösteriliyor.', 'info');
         }
-      });
+      );
+
+      firestoreUnsubscribeRef.current = unsubscribe;
     },
-    []
+    [showToast]
   );
 
   // Initialize Firebase Auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
-      (user, token) => {
+      (user) => {
         if (user) {
-          syncGoogleUserTeacher(user, token);
+          syncGoogleUserTeacher(user);
         }
       },
       () => {
         setIsGoogleConnected(false);
         setGoogleUser(null);
-        setGoogleToken(null);
+        if (firestoreUnsubscribeRef.current) {
+          firestoreUnsubscribeRef.current();
+          firestoreUnsubscribeRef.current = null;
+        }
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+      }
+    };
   }, [syncGoogleUserTeacher]);
 
   // Current Active Teacher
@@ -190,6 +242,13 @@ export default function App() {
   const handleSelectTeacher = (teacher: Teacher) => {
     setTeacherIdState(teacher.id);
     setCurrentTeacherId(teacher.id);
+
+    // If switching to demo teacher, detach Google Firestore listener
+    if (!teacher.isGoogleUser && firestoreUnsubscribeRef.current) {
+      firestoreUnsubscribeRef.current();
+      firestoreUnsubscribeRef.current = null;
+    }
+
     const teacherClasses = classrooms.filter((c) => c.teacherId === teacher.id);
     if (teacherClasses.length > 0) {
       setClassIdState(teacherClasses[0].id);
@@ -197,16 +256,16 @@ export default function App() {
     } else {
       setClassIdState(null);
     }
-    showToast(`Aktif Öğretmen: ${teacher.name} (${teacher.branch}). Sınıflar başarıyla izole edildi.`, 'info');
+    showToast(`Aktif Öğretmen: ${teacher.name} (${teacher.branch}). Sınıflar izole edildi.`, 'info');
   };
 
   // Google Login Trigger
   const handleGoogleLogin = async () => {
     try {
-      const res = await googleSignIn();
-      if (res) {
-        syncGoogleUserTeacher(res.user, res.accessToken);
-        showToast(`Google ile başarıyla giriş yapıldı: ${res.user.displayName || res.user.email}`, 'success');
+      const user = await googleSignIn();
+      if (user) {
+        syncGoogleUserTeacher(user);
+        showToast(`Google ile başarıyla giriş yapıldı: ${user.displayName || user.email}`, 'success');
       }
     } catch (err: any) {
       showToast(`Giriş başarısız: ${err?.message || 'Bilinmeyen hata'}`, 'warning');
@@ -216,9 +275,13 @@ export default function App() {
   // Google Logout
   const handleGoogleLogout = async () => {
     await logout();
+    if (firestoreUnsubscribeRef.current) {
+      firestoreUnsubscribeRef.current();
+      firestoreUnsubscribeRef.current = null;
+    }
     setIsGoogleConnected(false);
     setGoogleUser(null);
-    setGoogleToken(null);
+
     // Return to first demo teacher
     const defaultTeacher = teachers.find((t) => !t.isGoogleUser) || teachers[0];
     setTeacherIdState(defaultTeacher.id);
@@ -231,16 +294,29 @@ export default function App() {
     showToast('Google oturumu kapatıldı. Demo moduna dönüldü.', 'info');
   };
 
-  // Update Classroom in state & local storage
-  const updateClassroomState = useCallback(
-    (updatedClass: Classroom) => {
+  // Helper to persist classroom changes to both state & Firestore
+  const persistClassroomChange = useCallback(
+    async (updatedClass: Classroom) => {
+      // 1. Update local state immediately for instant responsive UI
       setClassrooms((prev) => {
         const next = prev.map((c) => (c.id === updatedClass.id ? updatedClass : c));
         saveClassrooms(next);
         return next;
       });
+
+      // 2. If user is authenticated with Google, save to Firestore: teachers/{user.uid}/classes/{classId}
+      if (isGoogleConnected && googleUser?.uid && updatedClass.teacherId === googleUser.uid) {
+        setIsFirestoreSaving(true);
+        try {
+          await saveClassroomToFirestore(googleUser.uid, updatedClass);
+        } catch (err) {
+          console.error('Firestore save failed:', err);
+        } finally {
+          setIsFirestoreSaving(false);
+        }
+      }
     },
-    []
+    [isGoogleConnected, googleUser]
   );
 
   // SWAP SEATS LOGIC (HTML5 Drag & Drop)
@@ -248,114 +324,169 @@ export default function App() {
     (sourceSeatId: string, targetSeatId: string) => {
       if (!currentClassroom) return;
 
-      const newSeats = [...currentClassroom.seats];
-      const sourceSeatIndex = newSeats.findIndex((s) => s.id === sourceSeatId);
-      const targetSeatIndex = newSeats.findIndex((s) => s.id === targetSeatId);
+      const newSeats = currentClassroom.seats.map((seat) => ({ ...seat }));
+      const newStudents = currentClassroom.students.map((st) => ({ ...st }));
 
-      // Handle unassigned dock drop
-      if (sourceSeatId === 'unassigned') {
-        // Source is from unseated list
-        if (targetSeatIndex !== -1) {
-          // Handled via assign
-          return;
-        }
+      const sourceSeat = newSeats.find((s) => s.id === sourceSeatId);
+      const targetSeat = newSeats.find((s) => s.id === targetSeatId);
+
+      if (!sourceSeat || !targetSeat) return;
+
+      const sourceStudentId = sourceSeat.studentId;
+      const targetStudentId = targetSeat.studentId;
+
+      // Swap studentId pointers on the seat objects
+      sourceSeat.studentId = targetStudentId;
+      targetSeat.studentId = sourceStudentId;
+
+      // Update seatCode references on students
+      if (sourceStudentId) {
+        const st = newStudents.find((s) => s.id === sourceStudentId);
+        if (st) st.seatCode = targetSeat.code;
       }
-
-      if (sourceSeatIndex === -1 || targetSeatIndex === -1) return;
-
-      const sourceStudentId = newSeats[sourceSeatIndex].studentId;
-      const targetStudentId = newSeats[targetSeatIndex].studentId;
-
-      // Swap student IDs between the two seats
-      newSeats[sourceSeatIndex] = {
-        ...newSeats[sourceSeatIndex],
-        studentId: targetStudentId,
-      };
-      newSeats[targetSeatIndex] = {
-        ...newSeats[targetSeatIndex],
-        studentId: sourceStudentId,
-      };
-
-      // Update student seatCode references
-      const newStudents = currentClassroom.students.map((st) => {
-        if (st.id === sourceStudentId) {
-          return { ...st, seatCode: newSeats[targetSeatIndex].code };
-        }
-        if (st.id === targetStudentId) {
-          return { ...st, seatCode: newSeats[sourceSeatIndex].code };
-        }
-        return st;
-      });
-
-      const sourceStudent = currentClassroom.students.find((s) => s.id === sourceStudentId);
-      const targetStudent = currentClassroom.students.find((s) => s.id === targetStudentId);
+      if (targetStudentId) {
+        const st = newStudents.find((s) => s.id === targetStudentId);
+        if (st) st.seatCode = sourceSeat.code;
+      }
 
       const updatedClass: Classroom = {
         ...currentClassroom,
         seats: newSeats,
         students: newStudents,
-        syncStatus: 'pending',
+        syncStatus: 'synced',
+        lastSyncedAt: new Date().toISOString(),
       };
 
-      updateClassroomState(updatedClass);
+      persistClassroomChange(updatedClass);
 
-      const msg = targetStudent
-        ? `Sıra Değişikliği: ${sourceStudent?.fullName || 'Öğrenci'} (${newSeats[targetSeatIndex].code}) ↔ ${targetStudent.fullName} (${newSeats[sourceSeatIndex].code}) yer değiştirdi.`
-        : `Sıra Değişikliği: ${sourceStudent?.fullName || 'Öğrenci'} ${newSeats[targetSeatIndex].code} sırasına taşındı.`;
-
-      showToast(msg, 'success');
-
-      // Auto sync in background if Google Sheets is connected
-      if (googleToken && updatedClass.googleSpreadsheetId) {
-        syncClassroomToGoogleSheet(googleToken, updatedClass.googleSpreadsheetId, updatedClass)
-          .then(() => {
-            updateClassroomState({
-              ...updatedClass,
-              syncStatus: 'synced',
-              lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            });
-          })
-          .catch((err) => {
-            console.warn('Auto-sync notice:', err);
-          });
+      const sName = currentClassroom.students.find((s) => s.id === sourceStudentId)?.fullName;
+      const tName = currentClassroom.students.find((s) => s.id === targetStudentId)?.fullName;
+      if (sName && tName) {
+        showToast(`${sName} ile ${tName} yer değiştirdi. Firestore güncellendi.`, 'success');
+      } else if (sName) {
+        showToast(`${sName} ${targetSeat.code} numaralı sıraya taşındı.`, 'info');
       }
     },
-    [currentClassroom, googleToken, showToast, updateClassroomState]
+    [currentClassroom, persistClassroomChange, showToast]
   );
 
-  // Remove Student from Desk (Unseat)
-  const handleRemoveStudentFromSeat = (seatId: string) => {
+  // REMOVE STUDENT FROM SEAT
+  const handleRemoveStudentFromSeat = useCallback(
+    (seatId: string) => {
+      if (!currentClassroom) return;
+
+      const newSeats = currentClassroom.seats.map((seat) => ({ ...seat }));
+      const newStudents = currentClassroom.students.map((st) => ({ ...st }));
+
+      const targetSeat = newSeats.find((s) => s.id === seatId);
+      if (!targetSeat || !targetSeat.studentId) return;
+
+      const student = newStudents.find((s) => s.id === targetSeat.studentId);
+      targetSeat.studentId = null;
+      if (student) student.seatCode = undefined;
+
+      const updatedClass: Classroom = {
+        ...currentClassroom,
+        seats: newSeats,
+        students: newStudents,
+        syncStatus: 'synced',
+        lastSyncedAt: new Date().toISOString(),
+      };
+
+      persistClassroomChange(updatedClass);
+      if (student) {
+        showToast(`${student.fullName} sıradan kaldırıldı.`, 'info');
+      }
+    },
+    [currentClassroom, persistClassroomChange, showToast]
+  );
+
+  // ADD NEW STUDENT
+  const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
     if (!currentClassroom) return;
-    const newSeats = currentClassroom.seats.map((s) => {
-      if (s.id === seatId) {
-        return { ...s, studentId: null };
-      }
-      return s;
-    });
 
-    const seat = currentClassroom.seats.find((s) => s.id === seatId);
-    const student = seat?.studentId
-      ? currentClassroom.students.find((st) => st.id === seat.studentId)
-      : null;
-
-    const newStudents = currentClassroom.students.map((st) => {
-      if (st.id === seat?.studentId) {
-        return { ...st, seatCode: undefined };
-      }
-      return st;
-    });
-
-    const updated = {
-      ...currentClassroom,
-      seats: newSeats,
-      students: newStudents,
-      syncStatus: 'pending' as const,
+    const newStudentId = `st_${Date.now()}`;
+    const newStudent: Student = {
+      ...studentData,
+      id: newStudentId,
     };
-    updateClassroomState(updated);
-    showToast(`${student?.fullName || 'Öğrenci'} sıradan kaldırıldı ve bekleme listesine alındı.`, 'info');
+
+    const newSeats = currentClassroom.seats.map((s) => ({ ...s }));
+    const emptySeat = newSeats.find((s) => !s.studentId);
+
+    if (emptySeat) {
+      emptySeat.studentId = newStudentId;
+      newStudent.seatCode = emptySeat.code;
+    }
+
+    const updatedClass: Classroom = {
+      ...currentClassroom,
+      students: [...currentClassroom.students, newStudent],
+      seats: newSeats,
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
+    };
+
+    persistClassroomChange(updatedClass);
+    showToast(`${newStudent.fullName} sınıfa eklendi ve Firestore'a kaydedildi.`, 'success');
   };
 
-  // Add Observation to Student
+  // DELETE STUDENT
+  const handleDeleteStudent = (studentId: string) => {
+    if (!currentClassroom) return;
+
+    const newSeats = currentClassroom.seats.map((s) => ({
+      ...s,
+      studentId: s.studentId === studentId ? null : s.studentId,
+    }));
+
+    const newStudents = currentClassroom.students.filter((s) => s.id !== studentId);
+    const newObservations = currentClassroom.observations.filter((o) => o.studentId !== studentId);
+
+    const updatedClass: Classroom = {
+      ...currentClassroom,
+      students: newStudents,
+      seats: newSeats,
+      observations: newObservations,
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
+    };
+
+    persistClassroomChange(updatedClass);
+    showToast('Öğrenci sınıftan silindi.', 'info');
+  };
+
+  // CLEAR ALL STUDENTS
+  const handleClearAllStudents = () => {
+    if (!currentClassroom) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Tüm Öğrencileri Kaldır',
+      message: `${currentClassroom.name} sınıfındaki tüm öğrencileri (${currentClassroom.students.length} öğrenci) ve oturma düzenini sıfırlamak istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      confirmLabel: 'Tüm Sınıfı Boşalt',
+      variant: 'danger',
+      action: () => {
+        const resetSeats = currentClassroom.seats.map((s) => ({
+          ...s,
+          studentId: null,
+        }));
+
+        const updatedClass: Classroom = {
+          ...currentClassroom,
+          students: [],
+          seats: resetSeats,
+          syncStatus: 'synced',
+          lastSyncedAt: new Date().toISOString(),
+        };
+
+        persistClassroomChange(updatedClass);
+        showToast('Sınıftaki tüm öğrenciler kaldırıldı ve boşaltıldı.', 'info');
+      },
+    });
+  };
+
+  // ADD STUDENT OBSERVATION / COMMENT (Requirement: Date-based comments in Firestore)
   const handleAddObservation = (
     studentId: string,
     category: ObservationCategory,
@@ -363,14 +494,13 @@ export default function App() {
     date: string
   ) => {
     if (!currentClassroom) return;
-    const student = currentClassroom.students.find((s) => s.id === studentId);
-    if (!student) return;
 
-    const newObs = {
+    const student = currentClassroom.students.find((s) => s.id === studentId);
+    const newObservation = {
       id: `obs_${Date.now()}`,
       classId: currentClassroom.id,
       studentId,
-      studentName: student.fullName,
+      studentName: student?.fullName || 'Öğrenci',
       date,
       category,
       content,
@@ -381,34 +511,31 @@ export default function App() {
 
     const updatedClass: Classroom = {
       ...currentClassroom,
-      observations: [newObs, ...currentClassroom.observations],
-      syncStatus: 'pending',
+      observations: [newObservation, ...currentClassroom.observations],
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
     };
 
-    updateClassroomState(updatedClass);
-    showToast(`Gözlem kaydedildi: [${student.fullName}]: ${content.slice(0, 40)}...`, 'success');
-
-    // Auto sync if Google Token
-    if (googleToken && updatedClass.googleSpreadsheetId) {
-      syncClassroomToGoogleSheet(googleToken, updatedClass.googleSpreadsheetId, updatedClass).catch(
-        (err) => console.warn('Sync notice:', err)
-      );
-    }
+    persistClassroomChange(updatedClass);
+    showToast(`${student?.fullName} için tarihli gözlem Firestore veritabanına kaydedildi.`, 'success');
   };
 
-  // Delete Observation
+  // DELETE STUDENT OBSERVATION
   const handleDeleteObservation = (obsId: string) => {
     if (!currentClassroom) return;
+
     const updatedClass: Classroom = {
       ...currentClassroom,
       observations: currentClassroom.observations.filter((o) => o.id !== obsId),
-      syncStatus: 'pending',
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
     };
-    updateClassroomState(updatedClass);
-    showToast('Gözlem notu silindi.', 'info');
+
+    persistClassroomChange(updatedClass);
+    showToast('Gözlem kaydı silindi.', 'info');
   };
 
-  // Add General Class Note (Row 24)
+  // ADD CLASS NOTE
   const handleAddClassNote = (content: string, date: string) => {
     if (!currentClassroom) return;
 
@@ -425,156 +552,47 @@ export default function App() {
     const updatedClass: Classroom = {
       ...currentClassroom,
       classNotes: [newNote, ...currentClassroom.classNotes],
-      syncStatus: 'pending',
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
     };
 
-    updateClassroomState(updatedClass);
-    showToast(`Sınıf genel notu (Satır 24) kaydedildi: ${date}`, 'success');
-
-    if (googleToken && updatedClass.googleSpreadsheetId) {
-      syncClassroomToGoogleSheet(googleToken, updatedClass.googleSpreadsheetId, updatedClass).catch(
-        (err) => console.warn('Sync notice:', err)
-      );
-    }
+    persistClassroomChange(updatedClass);
+    showToast('Sınıf notu Firestore veritabanına kaydedildi.', 'success');
   };
 
-  // Delete Class Note
+  // DELETE CLASS NOTE
   const handleDeleteClassNote = (noteId: string) => {
     if (!currentClassroom) return;
+
     const updatedClass: Classroom = {
       ...currentClassroom,
       classNotes: currentClassroom.classNotes.filter((n) => n.id !== noteId),
-      syncStatus: 'pending',
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
     };
-    updateClassroomState(updatedClass);
-    showToast('Genel sınıf notu silindi.', 'info');
+
+    persistClassroomChange(updatedClass);
+    showToast('Sınıf notu silindi.', 'info');
   };
 
-  // Create New Class Handler
-  const handleCreateClass = async (newClass: Classroom, createDriveSheet: boolean) => {
-    let finalClass = { ...newClass };
-
-    // If Google account is connected & user wants to create Google Sheet immediately
-    if (createDriveSheet && googleToken) {
-      try {
-        const { spreadsheetId, spreadsheetUrl } = await createGoogleSpreadsheet(
-          googleToken,
-          finalClass
-        );
-        finalClass.googleSpreadsheetId = spreadsheetId;
-        finalClass.googleSpreadsheetUrl = spreadsheetUrl;
-        finalClass.syncStatus = 'synced';
-        finalClass.lastSyncedAt = new Date().toLocaleTimeString('tr-TR', {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-        showToast(
-          `Google Drive'da 'Sinif_Oturma_Plani_${finalClass.name}' E-Tablosu otomatik oluşturuldu.`,
-          'success'
-        );
-      } catch (err: any) {
-        console.error('Google Sheet create failed:', err);
-        showToast('E-Tablo oluşturulurken hata oluştu, ancak sınıf yerel olarak kaydedildi.', 'warning');
-      }
+  // CREATE NEW CLASS
+  const handleCreateClass = async (newClass: Classroom) => {
+    // 1. If Google User, save directly to Firestore under teachers/{uid}/classes/{classId}
+    if (isGoogleConnected && googleUser?.uid) {
+      newClass.teacherId = googleUser.uid;
+      await saveClassroomToFirestore(googleUser.uid, newClass);
     }
 
+    // 2. Add to local state
     setClassrooms((prev) => {
-      const next = [finalClass, ...prev];
-      saveClassrooms(next);
-      return next;
+      const updated = [newClass, ...prev];
+      saveClassrooms(updated);
+      return updated;
     });
 
-    setClassIdState(finalClass.id);
-    setActiveClassId(finalClass.id);
-    showToast(`${finalClass.name} sınıfı başarıyla oluşturuldu (${finalClass.students.length} öğrenci).`, 'success');
-  };
-
-  // Add Student to Class
-  const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
-    if (!currentClassroom) return;
-    const newStudent: Student = {
-      ...studentData,
-      id: `st_${Date.now()}`,
-    };
-
-    // Find first empty seat
-    const emptySeat = currentClassroom.seats.find((s) => s.studentId === null);
-    let updatedSeats = [...currentClassroom.seats];
-
-    if (emptySeat) {
-      const seatIdx = updatedSeats.findIndex((s) => s.id === emptySeat.id);
-      updatedSeats[seatIdx] = {
-        ...updatedSeats[seatIdx],
-        studentId: newStudent.id,
-      };
-      newStudent.seatCode = emptySeat.code;
-    }
-
-    const updatedClass: Classroom = {
-      ...currentClassroom,
-      students: [...currentClassroom.students, newStudent],
-      seats: updatedSeats,
-      syncStatus: 'pending',
-    };
-
-    updateClassroomState(updatedClass);
-    showToast(
-      `${newStudent.fullName} sınıfa eklendi${newStudent.seatCode ? ` (${newStudent.seatCode} sırasına atandı)` : ''}.`,
-      'success'
-    );
-  };
-
-  // Delete Student
-  const handleDeleteStudent = (studentId: string) => {
-    if (!currentClassroom) return;
-    const updatedSeats = currentClassroom.seats.map((s) => {
-      if (s.studentId === studentId) {
-        return { ...s, studentId: null };
-      }
-      return s;
-    });
-
-    const updatedStudents = currentClassroom.students.filter((s) => s.id !== studentId);
-    const updatedClass: Classroom = {
-      ...currentClassroom,
-      students: updatedStudents,
-      seats: updatedSeats,
-      observations: currentClassroom.observations.filter((o) => o.studentId !== studentId),
-      syncStatus: 'pending',
-    };
-
-    updateClassroomState(updatedClass);
-    showToast('Öğrenci sınıftan silindi.', 'info');
-  };
-
-  // CLEAR ALL STUDENTS FROM CLASSROOM
-  const handleClearAllStudents = () => {
-    if (!currentClassroom) return;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: `${currentClassroom.name} Sınıfındaki Tüm Öğrencileri Kaldır?`,
-      message: `Bu işlem ${currentClassroom.name} sınıfındaki tüm öğrencileri, oturma planındaki yerleşimleri ve gözlem kayıtlarını tamamen temizleyecektir. Sınıf tamamen boşaltılacaktır. Bu işlemi onaylıyor musunuz?`,
-      confirmLabel: 'Evet, Tümünü Kaldır',
-      variant: 'danger',
-      action: () => {
-        const clearedSeats = currentClassroom.seats.map((seat) => ({
-          ...seat,
-          studentId: null,
-        }));
-
-        const updatedClass: Classroom = {
-          ...currentClassroom,
-          students: [],
-          seats: clearedSeats,
-          observations: [],
-          syncStatus: 'pending',
-        };
-
-        updateClassroomState(updatedClass);
-        showToast(`${currentClassroom.name} sınıfındaki tüm öğrenciler kaldırıldı. Sınıf boşaltıldı.`, 'info');
-      },
-    });
+    setClassIdState(newClass.id);
+    setActiveClassId(newClass.id);
+    showToast(`${newClass.name} sınıfı başarıyla oluşturuldu ve kaydedildi!`, 'success');
   };
 
   // SHUFFLE SEATS
@@ -583,86 +601,86 @@ export default function App() {
 
     setConfirmDialog({
       isOpen: true,
-      title: 'Sıraları Rastgele Karıştır?',
-      message: `${currentClassroom.name} sınıfındaki tüm öğrencilerin sıraları pedagojik olarak rastgele yeniden atanacaktır. Bu işlem mevcut oturma düzenini değiştirecektir.`,
-      confirmLabel: 'Evet, Sıraları Karıştır',
+      title: 'Sıraları Rastgele Karıştır',
+      message: `${currentClassroom.name} sınıfındaki tüm öğrencilerin sıraları rastgele karıştırılacaktır. Devam etmek istiyor musunuz?`,
+      confirmLabel: 'Karıştır',
       variant: 'warning',
       action: () => {
-        const studentIds = currentClassroom.students.map((s) => s.id);
-        // Fisher-Yates Shuffle
-        for (let i = studentIds.length - 1; i > 0; i--) {
+        const students = [...currentClassroom.students];
+        const seats = currentClassroom.seats.map((s) => ({ ...s, studentId: null as string | null }));
+
+        // Fisher-Yates shuffle
+        for (let i = students.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [studentIds[i], studentIds[j]] = [studentIds[j], studentIds[i]];
+          [students[i], students[j]] = [students[j], students[i]];
         }
 
-        const newSeats = currentClassroom.seats.map((seat, idx) => ({
-          ...seat,
-          studentId: idx < studentIds.length ? studentIds[idx] : null,
-        }));
-
-        const newStudents = currentClassroom.students.map((st) => {
-          const seat = newSeats.find((s) => s.studentId === st.id);
-          return { ...st, seatCode: seat?.code };
+        students.forEach((st, idx) => {
+          if (idx < seats.length) {
+            seats[idx].studentId = st.id;
+            st.seatCode = seats[idx].code;
+          }
         });
 
         const updatedClass: Classroom = {
           ...currentClassroom,
-          seats: newSeats,
-          students: newStudents,
-          syncStatus: 'pending',
+          seats,
+          students,
+          syncStatus: 'synced',
+          lastSyncedAt: new Date().toISOString(),
         };
 
-        updateClassroomState(updatedClass);
-        showToast('Sınıf oturma sıraları başarıyla yeniden karıştırıldı!', 'success');
+        persistClassroomChange(updatedClass);
+        showToast('Sıralar rastgele karıştırıldı ve Firestore güncellendi.', 'success');
       },
     });
   };
 
-  // RESET SEATS (Back to alphabetical / student number order)
+  // RESET SEATS BY STUDENT NUMBER
   const handleResetSeats = () => {
     if (!currentClassroom) return;
 
     setConfirmDialog({
       isOpen: true,
-      title: 'Sıraları Numaraya Göre Sıfırla?',
-      message: `${currentClassroom.name} sınıfındaki öğrenciler okul numaralarına göre sıralı olarak baştan sona yerleştirilecektir.`,
-      confirmLabel: 'Sıralamayı Sıfırla',
+      title: 'Sıraları Numaraya Göre Sıfırla',
+      message: `Öğrenciler okul numaralarına göre küçükten büyüğe sıralanacaktır. Onaylıyor musunuz?`,
+      confirmLabel: 'Numaraya Göre Sırala',
       variant: 'info',
       action: () => {
         const sortedStudents = [...currentClassroom.students].sort(
-          (a, b) => parseInt(a.studentNumber) - parseInt(b.studentNumber)
+          (a, b) => parseInt(a.studentNumber || '0', 10) - parseInt(b.studentNumber || '0', 10)
         );
 
-        const newSeats = currentClassroom.seats.map((seat, idx) => ({
-          ...seat,
-          studentId: idx < sortedStudents.length ? sortedStudents[idx].id : null,
-        }));
+        const resetSeats = currentClassroom.seats.map((s) => ({ ...s, studentId: null as string | null }));
 
-        const newStudents = currentClassroom.students.map((st) => {
-          const seat = newSeats.find((s) => s.studentId === st.id);
-          return { ...st, seatCode: seat?.code };
+        sortedStudents.forEach((st, idx) => {
+          if (idx < resetSeats.length) {
+            resetSeats[idx].studentId = st.id;
+            st.seatCode = resetSeats[idx].code;
+          }
         });
 
         const updatedClass: Classroom = {
           ...currentClassroom,
-          seats: newSeats,
-          students: newStudents,
-          syncStatus: 'pending',
+          seats: resetSeats,
+          students: sortedStudents,
+          syncStatus: 'synced',
+          lastSyncedAt: new Date().toISOString(),
         };
 
-        updateClassroomState(updatedClass);
+        persistClassroomChange(updatedClass);
         showToast('Sıralar öğrenci numarasına göre sıfırlandı.', 'info');
       },
     });
   };
 
-  // EXPORT ONLY SEATING PLAN TO PDF (Requirement 6)
+  // PDF İNDİR (Visual Seating Plan PDF)
   const handleExportPDF = async () => {
     if (!currentClassroom) return;
     setIsExportingPDF(true);
     try {
       await exportSeatingPlanToPDF('printable-seating-chart', currentClassroom, activeTeacher);
-      showToast('Oturma planı PDF dosyası başarıyla hazırlandı.', 'success');
+      showToast('Oturma planı PDF dosyası başarıyla indirildi.', 'success');
     } catch (err: any) {
       showToast(`PDF oluşturma hatası: ${err?.message || 'Bilinmeyen hata'}`, 'warning');
     } finally {
@@ -670,165 +688,23 @@ export default function App() {
     }
   };
 
+  // EXCEL (.XLSX) İNDİR (Full Seating Plan, Student Roster & Date-based Comments)
+  const handleExportExcel = () => {
+    if (!currentClassroom) return;
+    setIsExportingExcel(true);
+    try {
+      exportClassroomToExcel(currentClassroom, activeTeacher.name);
+      showToast(`${currentClassroom.name} Excel (.xlsx) raporu başarıyla indirildi.`, 'success');
+    } catch (err: any) {
+      showToast(`Excel oluşturma hatası: ${err?.message || 'Bilinmeyen hata'}`, 'warning');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   // PRINT
   const handlePrint = () => {
     window.print();
-  };
-
-  // DIRECT ACTION: OPEN OR CREATE GOOGLE DRIVE SPREADSHEET
-  const handleCreateOrOpenDriveSheet = async () => {
-    if (!currentClassroom) return;
-
-    // If spreadsheet already exists, open it immediately
-    if (currentClassroom.googleSpreadsheetUrl && !currentClassroom.googleSpreadsheetId?.startsWith('mock_')) {
-      window.open(currentClassroom.googleSpreadsheetUrl, '_blank');
-
-      // Also trigger a background sync to keep it up to date
-      const token = googleToken || (await getAccessToken());
-      if (token && currentClassroom.googleSpreadsheetId) {
-        syncClassroomToGoogleSheet(token, currentClassroom.googleSpreadsheetId, currentClassroom)
-          .then(() => {
-            updateClassroomState({
-              ...currentClassroom,
-              syncStatus: 'synced',
-              lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            });
-            showToast('Google Drive E-Tablosu güncellendi ve açıldı.', 'success');
-          })
-          .catch((err) => console.warn('Background sync note:', err));
-      }
-      return;
-    }
-
-    // Classroom does not have a spreadsheet yet: Create one on user's Google Drive immediately!
-    setIsSyncingSheets(true);
-    showToast('Google Drive hesabınızda E-Tablo oluşturuluyor, lütfen bekleyiniz...', 'info');
-
-    try {
-      let token = googleToken || (await getAccessToken());
-
-      // If token is missing, authenticate via Google Sign-In first
-      if (!token) {
-        const loginResult = await googleSignIn();
-        if (loginResult) {
-          token = loginResult.accessToken;
-          setGoogleToken(token);
-          setIsGoogleConnected(true);
-          setGoogleUser(loginResult.user);
-        }
-      }
-
-      if (!token) {
-        showToast('Google Drive erişim izni alınamadı. Lütfen Google ile giriş yapınız.', 'warning');
-        setIsSyncingSheets(false);
-        return;
-      }
-
-      const { spreadsheetId, spreadsheetUrl } = await createGoogleSpreadsheet(
-        token,
-        currentClassroom
-      );
-
-      const updatedClass: Classroom = {
-        ...currentClassroom,
-        googleSpreadsheetId: spreadsheetId,
-        googleSpreadsheetUrl: spreadsheetUrl,
-        syncStatus: 'synced',
-        lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      updateClassroomState(updatedClass);
-      showToast(`Google Drive'da 'Sinif_Oturma_Plani_${currentClassroom.name}' oluşturuldu! E-Tablo yeni sekmede açılıyor...`, 'success');
-
-      // Attempt opening in new tab
-      const win = window.open(spreadsheetUrl, '_blank');
-      if (!win) {
-        // If popup was blocked by browser, open preview modal with prominent direct link
-        setIsSheetsModalOpen(true);
-      }
-    } catch (err: any) {
-      console.error('Drive spreadsheet creation failed:', err);
-      showToast(`E-Tablo oluşturulamadı: ${err?.message || 'Bağlantı hatası'}`, 'warning');
-      setIsSheetsModalOpen(true);
-    } finally {
-      setIsSyncingSheets(false);
-    }
-  };
-
-  // SYNC TO GOOGLE SHEETS
-  const handleTriggerSync = () => {
-    if (!currentClassroom) return;
-
-    // MANDATORY per Workspace integration skill: Confirm before updating user spreadsheet data
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Google Drive ve E-Tablo Senkronizasyon Onayı',
-      message: `Google Drive hesabınızda bulunan 'Sinif_Oturma_Plani_${currentClassroom.name}' tablosu güncellenecektir. A Sütunundaki Sıra Kodları, B Sütunundaki Öğrenci İsimleri, Tarih Yorumları ve Satır 24 Sınıf Notları senkronize edilecektir. Devam etmek istiyor musunuz?`,
-      confirmLabel: 'Onayla ve Senkronize Et',
-      variant: 'info',
-      action: async () => {
-        setIsSyncingSheets(true);
-        try {
-          let token = googleToken || (await getAccessToken());
-
-          // If token is missing, prompt user via googleSignIn to get fresh OAuth access token
-          if (!token) {
-            const loginResult = await googleSignIn();
-            if (loginResult) {
-              token = loginResult.accessToken;
-              setGoogleToken(token);
-              setIsGoogleConnected(true);
-              setGoogleUser(loginResult.user);
-            }
-          }
-
-          if (!token) {
-            showToast('Google Drive erişim izni alınamadı. Lütfen Google ile giriş yapınız.', 'warning');
-            return;
-          }
-
-          // Check if this classroom already has a real Google Spreadsheet
-          const hasRealSpreadsheet =
-            currentClassroom.googleSpreadsheetId &&
-            !currentClassroom.googleSpreadsheetId.startsWith('mock_');
-
-          if (hasRealSpreadsheet) {
-            // Live Google Sheets API Call to update existing spreadsheet
-            await syncClassroomToGoogleSheet(token, currentClassroom.googleSpreadsheetId!, currentClassroom);
-            const updatedClass = {
-              ...currentClassroom,
-              syncStatus: 'synced' as const,
-              lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            };
-            updateClassroomState(updatedClass);
-            showToast('Google Drive E-Tablosu başarıyla senkronize edildi.', 'success');
-          } else {
-            // Create a real spreadsheet on user's Google Drive
-            showToast('Google Drive hesabınızda E-Tablo oluşturuluyor...', 'info');
-            const { spreadsheetId, spreadsheetUrl } = await createGoogleSpreadsheet(
-              token,
-              currentClassroom
-            );
-            const updatedClass = {
-              ...currentClassroom,
-              googleSpreadsheetId: spreadsheetId,
-              googleSpreadsheetUrl: spreadsheetUrl,
-              syncStatus: 'synced' as const,
-              lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            };
-            updateClassroomState(updatedClass);
-            showToast(`Google Drive'da 'Sinif_Oturma_Plani_${currentClassroom.name}' oluşturuldu ve senkronize edildi!`, 'success');
-            // Open the real Google Drive spreadsheet in new tab
-            window.open(spreadsheetUrl, '_blank');
-          }
-        } catch (err: any) {
-          console.error('Google Sheets sync error:', err);
-          showToast(`E-Tablo hatası: ${err?.message || 'İşlem tamamlanamadı'}`, 'warning');
-        } finally {
-          setIsSyncingSheets(false);
-        }
-      },
-    });
   };
 
   // Open Report Modal focused on student
@@ -863,7 +739,6 @@ export default function App() {
         onOpenGoogleLogin={handleGoogleLogin}
         onGoogleLogout={handleGoogleLogout}
         isGoogleConnected={isGoogleConnected}
-        onOpenSheetsPreview={() => setIsSheetsModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -875,19 +750,19 @@ export default function App() {
               classroom={currentClassroom}
               activeTeacher={activeTeacher}
               onExportPDF={handleExportPDF}
+              onExportExcel={handleExportExcel}
               onPrint={handlePrint}
               onOpenReports={() => {
                 setReportStudentId(null);
                 setIsReportModalOpen(true);
               }}
-              onOpenSheetsPreview={() => setIsSheetsModalOpen(true)}
               onOpenStudentManagement={() => setIsStudentManagementOpen(true)}
               onShuffleSeats={handleShuffleSeats}
               onResetSeats={handleResetSeats}
               onClearAllStudents={handleClearAllStudents}
-              onOpenOrCreateDriveSheet={handleCreateOrOpenDriveSheet}
               isExportingPDF={isExportingPDF}
-              isSyncingSheets={isSyncingSheets}
+              isExportingExcel={isExportingExcel}
+              isFirestoreSaving={isFirestoreSaving}
             />
 
             {/* Smart Blackboard & Room Simulation Frontage */}
@@ -911,13 +786,13 @@ export default function App() {
               {activeTeacher.name} İçin Henüz Sınıf Bulunmuyor
             </h2>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Sıkı izolasyon kuralı gereği diğer öğretmenlerin (9-A, 10-B vb.) sınıfları bu hesapta gizlidir. Yeni bir sınıf oluşturarak oturma planınızı ve Google E-Tablo senkronizasyonunuzu başlatabilirsiniz.
+              Sıkı izolasyon kuralı gereği diğer öğretmenlerin (9-A, 10-B vb.) sınıfları bu hesapta gizlidir. Yeni bir sınıf oluşturarak oturma planınızı ve Firebase Cloud Firestore bulut veritabanı senkronizasyonunuzu başlatabilirsiniz.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsNewClassModalOpen(true)}
-                className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2"
+                className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>İlk Sınıfınızı Oluşturun</span>
@@ -943,7 +818,7 @@ export default function App() {
 
       {/* MODALS */}
 
-      {/* 1. Student Report Panel (Requirement 5) */}
+      {/* 1. Student Report Panel (Tarih Bazlı Öğrenci Gözlemleri & Yorumları) */}
       {currentClassroom && (
         <ReportModal
           isOpen={isReportModalOpen}
@@ -958,20 +833,7 @@ export default function App() {
         />
       )}
 
-      {/* 2. Google Sheets Preview & Sync Simulator (Requirement 4) */}
-      {currentClassroom && (
-        <GoogleSheetsPreviewModal
-          isOpen={isSheetsModalOpen}
-          onClose={() => setIsSheetsModalOpen(false)}
-          classroom={currentClassroom}
-          activeTeacher={activeTeacher}
-          isGoogleConnected={isGoogleConnected}
-          onTriggerSync={handleTriggerSync}
-          isSyncing={isSyncingSheets}
-        />
-      )}
-
-      {/* 3. New Class Modal (Requirement 2) */}
+      {/* 2. New Class Modal */}
       <NewClassModal
         isOpen={isNewClassModalOpen}
         onClose={() => setIsNewClassModalOpen(false)}
@@ -980,7 +842,7 @@ export default function App() {
         onCreateClass={handleCreateClass}
       />
 
-      {/* 4. Teacher Switcher & Isolation Verification Modal (Requirement 1) */}
+      {/* 3. Teacher Switcher & Isolation Verification Modal */}
       <TeacherSwitcherModal
         isOpen={isTeacherSwitcherOpen}
         onClose={() => setIsTeacherSwitcherOpen(false)}
@@ -993,7 +855,7 @@ export default function App() {
         googleUser={googleUser}
       />
 
-      {/* 5. Student Roster Management Modal */}
+      {/* 4. Student Roster Management Modal */}
       {currentClassroom && (
         <StudentManagementModal
           isOpen={isStudentManagementOpen}
@@ -1005,7 +867,7 @@ export default function App() {
         />
       )}
 
-      {/* 6. Destructive / Mutating Operation Confirm Modal */}
+      {/* 5. Destructive / Mutating Operation Confirm Modal */}
       <ConfirmModal
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}

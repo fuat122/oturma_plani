@@ -5,13 +5,9 @@ import {
   ShieldCheck,
   ChevronDown,
   Plus,
-  CloudCheck,
   Cloud,
-  FileSpreadsheet,
-  Users,
   LogOut,
-  Sparkles,
-  ExternalLink,
+  Database,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,7 +20,6 @@ interface NavbarProps {
   onOpenGoogleLogin: () => void;
   onGoogleLogout: () => void;
   isGoogleConnected: boolean;
-  onOpenSheetsPreview: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,10 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenGoogleLogin,
   onGoogleLogout,
   isGoogleConnected,
-  onOpenSheetsPreview,
 }) => {
-  const currentClass = classrooms.find((c) => c.id === selectedClassId);
-
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -88,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onOpenNewClassModal}
-              className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+              className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer"
               title="Yeni Sınıf Oluştur"
             >
               <Plus className="w-4 h-4" />
@@ -96,25 +88,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Center/Right: Google Drive Sync & Teacher Profile */}
+        {/* Center/Right: Firestore Sync Status & Teacher Profile */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* E-Tablo Sync Status Pill */}
-          <button
-            type="button"
-            onClick={onOpenSheetsPreview}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold transition-all shadow-2xs"
-            title="Google E-Tablo durumunu ve senkronizasyon matrisini gör"
+          {/* Firestore Cloud Sync Badge */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-sky-200 bg-sky-50/90 text-sky-900 text-xs font-semibold shadow-2xs"
+            title="Tüm sınıf verileri Firebase Cloud Firestore veritabanında güvenle saklanmaktadır"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Google E-Tablo</span>
+            <Cloud className="w-3.5 h-3.5 text-sky-600" />
+            <span>Cloud Firestore</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          </button>
+          </div>
 
           {/* Teacher Profile & Yetkili Öğretmen Badge */}
           <button
             type="button"
             onClick={onOpenTeacherSwitcher}
-            className={`flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl border transition-all text-left shadow-2xs ${
+            className={`flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl border transition-all text-left shadow-2xs cursor-pointer ${
               activeTeacher.isGoogleUser
                 ? 'border-blue-300 bg-blue-50/70 hover:bg-blue-100/70'
                 : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
@@ -140,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
                 <span>{activeTeacher.name}</span>
                 {activeTeacher.isGoogleUser ? (
-                  <span className="text-[9px] font-bold px-1 py-0.2 rounded-full bg-blue-600 text-white">
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-600 text-white">
                     Google
                   </span>
                 ) : (
@@ -168,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onGoogleLogout}
-              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
               title="Google Hesabından Çıkış Yap"
             >
               <LogOut className="w-4 h-4" />
@@ -177,7 +167,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onOpenGoogleLogin}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path

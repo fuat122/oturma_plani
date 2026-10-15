@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "Classroom": {
+      "title": "Classroom",
+      "description": "A classroom containing seating plan layout, student list, and historical date-based observations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "name": { "type": "string" },
+        "grade": { "type": "string" },
+        "branchName": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "maxCapacity": { "type": "number" },
+        "layoutType": { "type": "string" },
+        "students": { "type": "array" },
+        "seats": { "type": "array" },
+        "observations": { "type": "array" },
+        "classNotes": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "teacherId", "name"]
+    },
+    "StudentObservation": {
+      "title": "StudentObservation",
+      "description": "Date-based comment or observation for a student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "classId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "classId", "studentId", "content", "date"]
+    }
+  },
+  "firestore": {
+    "/teachers/{teacherId}/classes/{classId}": {
+      "schema": "Classroom",
+      "description": "Classroom documents isolated per teacher"
+    },
+    "/teachers/{teacherId}/classes/{classId}/observations/{observationId}": {
+      "schema": "StudentObservation",
+      "description": "Optional subcollection for date-based student observations"
+    }
+  }
+}

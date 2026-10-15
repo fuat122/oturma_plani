@@ -186,7 +186,7 @@ export const TeacherSwitcherModal: React.FC<TeacherSwitcherModalProps> = ({
                       Kendi Google Hesabınızla Giriş Yapın
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      Google Drive ve E-Tablo entegrasyonu aktif hale gelir
+                      Firebase Cloud Firestore bulut veritabanı aktif hale gelir
                     </div>
                   </div>
                 </div>

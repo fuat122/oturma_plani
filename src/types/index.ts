@@ -60,24 +60,13 @@ export interface Classroom {
   grade: GradeLevel;
   branchName?: string;
   academicYear: string;
-  maxCapacity: number; // Max 23
+  maxCapacity: number;
   layoutType: '3-block-standard' | '3-block-extended' | '4-block';
   students: Student[];
   seats: SeatSlot[];
   observations: StudentObservation[];
   classNotes: ClassNote[];
-  googleSpreadsheetId?: string;
-  googleSpreadsheetUrl?: string;
   lastSyncedAt?: string;
-  syncStatus?: 'synced' | 'pending' | 'syncing' | 'offline' | 'error';
+  syncStatus?: 'synced' | 'saving' | 'offline' | 'error';
   createdAt: string;
-}
-
-export interface GoogleSheetsSyncResult {
-  success: boolean;
-  spreadsheetId?: string;
-  spreadsheetUrl?: string;
-  error?: string;
-  syncedRows?: number;
-  syncedCols?: number;
 }
