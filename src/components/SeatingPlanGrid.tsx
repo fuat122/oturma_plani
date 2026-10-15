@@ -95,9 +95,8 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                   return (
                     <div key={rowNum} className="relative">
                       {/* Row Label Indicator */}
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mb-1 px-1">
-                        <span>{rowNum}. Sıra (Önden Arkaya)</span>
-                        <span>{rowNum === 1 ? 'Ön Sıra' : rowNum === maxRows ? 'Arka Sıra' : ''}</span>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium mb-1.5 px-1">
+                        <span>{rowNum}. Sıra</span>
                       </div>
 
                       {/* 2 Desks / Seats Side-by-Side */}

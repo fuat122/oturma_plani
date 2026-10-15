@@ -486,6 +486,97 @@ export default function App() {
     });
   };
 
+  // UPDATE ALL STUDENTS (In-place edits from modal)
+  const handleUpdateStudents = (updatedStudents: Student[]) => {
+    if (!currentClassroom) return;
+
+    // Map updated student names to observations
+    const nameMap = new Map(updatedStudents.map((s) => [s.id, s.fullName]));
+    const updatedObservations = currentClassroom.observations.map((obs) => ({
+      ...obs,
+      studentName: nameMap.get(obs.studentId) || obs.studentName,
+    }));
+
+    const updatedClass: Classroom = {
+      ...currentClassroom,
+      students: updatedStudents,
+      observations: updatedObservations,
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
+    };
+
+    persistClassroomChange(updatedClass);
+    showToast('Öğrenci bilgileri güncellendi ve Firestore veritabanına kaydedildi.', 'success');
+  };
+
+  // BULK ADD / REPLACE STUDENTS
+  const handleBulkAddStudents = (
+    rawList: Array<{ studentNumber: string; fullName: string; gender: 'K' | 'E' }>,
+    replaceExisting: boolean
+  ) => {
+    if (!currentClassroom) return;
+
+    const totalCapacity = currentClassroom.seats.length > 0 ? currentClassroom.seats.length : 24;
+
+    const existingStudents = replaceExisting ? [] : [...currentClassroom.students];
+    const seats = replaceExisting
+      ? currentClassroom.seats.map((s) => ({ ...s, studentId: null }))
+      : [...currentClassroom.seats];
+
+    const existingNumbers = new Set(existingStudents.map((s) => s.studentNumber));
+    const newStudents: Student[] = [];
+
+    for (let i = 0; i < rawList.length; i++) {
+      if (existingStudents.length + newStudents.length >= totalCapacity) {
+        break;
+      }
+      const item = rawList[i];
+      let num = item.studentNumber.trim();
+      if (!num) num = String(100 + existingStudents.length + newStudents.length + 1);
+      while (existingNumbers.has(num)) {
+        num = String(Number(num) + 1);
+      }
+      existingNumbers.add(num);
+
+      const student: Student = {
+        id: `st_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+        studentNumber: num,
+        fullName: item.fullName.trim() || `Öğrenci ${num}`,
+        gender: item.gender,
+      };
+      newStudents.push(student);
+    }
+
+    const combinedStudents = [...existingStudents, ...newStudents];
+
+    // Assign unassigned students to available empty seats
+    const emptySeats = seats.filter((s) => !s.studentId);
+    let emptyIdx = 0;
+
+    combinedStudents.forEach((st) => {
+      const isSeated = seats.some((s) => s.studentId === st.id);
+      if (!isSeated && emptyIdx < emptySeats.length) {
+        emptySeats[emptyIdx].studentId = st.id;
+        st.seatCode = emptySeats[emptyIdx].code;
+        emptyIdx++;
+      }
+    });
+
+    const updatedClass: Classroom = {
+      ...currentClassroom,
+      students: combinedStudents,
+      seats: seats,
+      syncStatus: 'synced',
+      lastSyncedAt: new Date().toISOString(),
+    };
+
+    persistClassroomChange(updatedClass);
+    showToast(
+      `${newStudents.length} öğrenci sınıfa başarıyla eklendi ve Firestore veritabanına kaydedildi.`,
+      'success'
+    );
+  };
+
   // ADD STUDENT OBSERVATION / COMMENT (Requirement: Date-based comments in Firestore)
   const handleAddObservation = (
     studentId: string,
@@ -855,7 +946,7 @@ export default function App() {
         googleUser={googleUser}
       />
 
-      {/* 4. Student Roster Management Modal */}
+      {/* 4. Student Roster & Class Management Modal */}
       {currentClassroom && (
         <StudentManagementModal
           isOpen={isStudentManagementOpen}
@@ -864,6 +955,8 @@ export default function App() {
           onAddStudent={handleAddStudent}
           onDeleteStudent={handleDeleteStudent}
           onClearAllStudents={handleClearAllStudents}
+          onUpdateStudents={handleUpdateStudents}
+          onBulkAddStudents={handleBulkAddStudents}
         />
       )}
 

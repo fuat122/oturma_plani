@@ -87,32 +87,50 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
                         ? classroom.students.find((st) => st.id === seat.studentId)
                         : null;
 
+                      const isGirl = student?.gender === 'K';
                       return (
                         <div
                           key={col}
-                          className={`p-2 rounded border text-left min-h-[64px] flex flex-col justify-between ${
+                          className={`p-2 rounded-lg border text-left min-h-[64px] flex flex-col justify-between ${
                             student
-                              ? 'bg-white border-slate-300 shadow-xs'
-                              : 'bg-slate-100 border-dashed border-slate-300 text-slate-400'
+                              ? isGirl
+                                ? 'bg-rose-50 border-rose-300 text-rose-950'
+                                : 'bg-white border-slate-300 shadow-2xs text-slate-900'
+                              : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
                           }`}
                         >
-                          <div className="flex justify-between items-start text-[10px] text-slate-400">
-                            <span className="font-mono font-semibold text-slate-600">
-                              {seat?.code || `${block.prefix}-${row}${col}`}
+                          <div className="flex justify-between items-start text-[10px] text-slate-500">
+                            <span className="font-medium text-slate-500">
+                              {row}. Sıra
                             </span>
                             {student && (
-                              <span className="font-mono text-slate-500">
-                                #{student.studentNumber}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono font-bold text-slate-700">
+                                  #{student.studentNumber}
+                                </span>
+                                <span
+                                  className={`text-[9px] font-bold px-1 rounded ${
+                                    isGirl
+                                      ? 'bg-rose-100 text-rose-800'
+                                      : 'bg-blue-100 text-blue-700'
+                                  }`}
+                                >
+                                  {isGirl ? 'Kız' : 'Erkek'}
+                                </span>
+                              </div>
                             )}
                           </div>
                           <div className="mt-1">
                             {student ? (
-                              <div className="font-semibold text-xs leading-tight text-slate-900 line-clamp-2">
+                              <div
+                                className={`font-bold text-xs leading-tight line-clamp-2 ${
+                                  isGirl ? 'text-rose-950' : 'text-slate-900'
+                                }`}
+                              >
                                 {student.fullName}
                               </div>
                             ) : (
-                              <div className="text-[11px] italic text-slate-400">Boş</div>
+                              <div className="text-[11px] italic text-slate-400">Boş Sıra</div>
                             )}
                           </div>
                         </div>

@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Download,
+  UserCog,
 } from 'lucide-react';
 
 interface ClassroomHeaderProps {
@@ -153,6 +154,17 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
             <span>{isExportingExcel ? 'Excel Hazırlanıyor...' : 'Excel (.xlsx) İndir'}</span>
             <Download className="w-3.5 h-3.5 text-emerald-200" />
+          </button>
+
+          {/* SINIFI DÜZENLE BUTONU */}
+          <button
+            type="button"
+            onClick={onOpenStudentManagement}
+            className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-blue-600/25 hover:shadow-md transition-all cursor-pointer"
+            title="Öğrenci listesi, ad-soyad, numara, cinsiyet düzenleme ve toplu ekleme/silme"
+          >
+            <UserCog className="w-4 h-4 text-blue-100" />
+            <span>Sınıfı Düzenle</span>
           </button>
 
           {/* Tarayıcı Yazdır Butonu */}
