@@ -391,9 +391,27 @@ export function initializeStorage(): { teachers: Teacher[]; classrooms: Classroo
   }
 
   try {
+    const teachers: Teacher[] = JSON.parse(existingTeachers);
+    let classrooms: Classroom[] = JSON.parse(existingClassrooms);
+
+    // Normalize maxCapacity to match actual physical seat count (e.g. 24 desks)
+    let needsResave = false;
+    classrooms = classrooms.map((cls) => {
+      const realSeatCount = cls.seats && cls.seats.length > 0 ? cls.seats.length : 24;
+      if (cls.maxCapacity !== realSeatCount) {
+        needsResave = true;
+        return { ...cls, maxCapacity: realSeatCount };
+      }
+      return cls;
+    });
+
+    if (needsResave) {
+      localStorage.setItem(STORAGE_KEYS.CLASSROOMS, JSON.stringify(classrooms));
+    }
+
     return {
-      teachers: JSON.parse(existingTeachers),
-      classrooms: JSON.parse(existingClassrooms),
+      teachers,
+      classrooms,
     };
   } catch (e) {
     console.error('Storage parse error, resetting seed data', e);
@@ -416,7 +434,12 @@ export function getStoredTeachers(): Teacher[] {
 export function getStoredClassrooms(): Classroom[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CLASSROOMS);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: Classroom[] = JSON.parse(raw);
+    return parsed.map((cls) => ({
+      ...cls,
+      maxCapacity: cls.seats && cls.seats.length > 0 ? cls.seats.length : 24,
+    }));
   } catch {
     return [];
   }
@@ -495,7 +518,7 @@ export function createStarterClassroomForGoogleTeacher(teacher: Teacher): Classr
     grade: '9. Sınıf',
     branchName: `${teacher.name} Danışmanlığında 9-A Sınıfı`,
     academicYear: '2026-2027',
-    maxCapacity: 23,
+    maxCapacity: 24,
     layoutType: '3-block-standard',
     students,
     seats,

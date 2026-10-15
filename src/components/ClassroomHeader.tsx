@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   CheckCircle,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 
 interface ClassroomHeaderProps {
@@ -26,7 +27,9 @@ interface ClassroomHeaderProps {
   onShuffleSeats: () => void;
   onResetSeats: () => void;
   onClearAllStudents: () => void;
+  onOpenOrCreateDriveSheet: () => void;
   isExportingPDF: boolean;
+  isSyncingSheets?: boolean;
 }
 
 export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
@@ -40,9 +43,11 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
   onShuffleSeats,
   onResetSeats,
   onClearAllStudents,
+  onOpenOrCreateDriveSheet,
   isExportingPDF,
+  isSyncingSheets = false,
 }) => {
-  const totalSeats = classroom.seats.length || 24;
+  const totalSeats = classroom.seats.length > 0 ? classroom.seats.length : (classroom.maxCapacity || 24);
   const capacityPercent = Math.round((classroom.students.length / totalSeats) * 100);
   const emptySeatsCount = Math.max(0, totalSeats - classroom.students.length);
 
@@ -69,28 +74,49 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
               {classroom.name} Sınıfı Oturma Düzeni
             </h1>
 
-            {/* Direct Google Drive Sheet Link Button */}
+            {/* Direct Google Drive Sheet Action Button */}
             {classroom.googleSpreadsheetUrl ? (
-              <a
-                href={classroom.googleSpreadsheetUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all hover:scale-102"
-                title="Google Drive üzerinde oluşturulan E-Tablo dosyasını yeni sekmede açın ve düzenleyin"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Google Drive E-Tabloyu Aç</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+              <div className="inline-flex items-center gap-1.5">
+                <a
+                  href={classroom.googleSpreadsheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all hover:scale-102"
+                  title="Google Drive üzerinde oluşturulan E-Tablo dosyasını yeni sekmede açın ve düzenleyin"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Google Drive E-Tabloyu Aç</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <button
+                  type="button"
+                  onClick={onOpenOrCreateDriveSheet}
+                  disabled={isSyncingSheets}
+                  className="p-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs transition-all cursor-pointer"
+                  title="E-Tablo verilerini Google Drive ile hemen yeniden senkronize et"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSheets ? 'animate-spin text-emerald-600' : ''}`} />
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
-                onClick={onOpenSheetsPreview}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition-all cursor-pointer"
-                title="Bu sınıf için Google Drive'da otomatik E-Tablo oluşturun"
+                onClick={onOpenOrCreateDriveSheet}
+                disabled={isSyncingSheets}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-102 cursor-pointer disabled:opacity-50"
+                title="Bu sınıf için Google Drive hesabınızda anında E-Tablo oluşturun ve açın"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                <span>E-Tabloyu Drive'da Aç / Oluştur</span>
+                {isSyncingSheets ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isSyncingSheets
+                    ? 'Drive\'da E-Tablo Oluşturuluyor...'
+                    : 'Google Drive E-Tabloyu Aç / Oluştur'}
+                </span>
+                {!isSyncingSheets && <ExternalLink className="w-3 h-3" />}
               </button>
             )}
           </div>
@@ -161,7 +187,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             <Printer className="w-4 h-4" />
           </button>
 
-          {/* Google E-Tablo Önizleme Butonu */}
+          {/* Google E-Tablo Önizleme & Senkronizasyon Butonu */}
           <button
             type="button"
             onClick={onOpenSheetsPreview}
@@ -182,36 +208,35 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             <Users className="w-4 h-4" />
           </button>
 
+          {/* Sıraları Karıştır Butonu */}
+          <button
+            type="button"
+            onClick={onShuffleSeats}
+            className="p-2.5 rounded-2xl border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"
+            title="Öğrenci Sıralarını Rastgele Karıştır"
+          >
+            <Shuffle className="w-4 h-4" />
+          </button>
+
+          {/* Sıralamayı Sıfırla Butonu */}
+          <button
+            type="button"
+            onClick={onResetSeats}
+            className="p-2.5 rounded-2xl border border-slate-300 hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"
+            title="Sıraları Okul Numarasına Göre Sırala"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+
           {/* TÜM ÖĞRENCİLERİ KALDIR BUTONU */}
           <button
             type="button"
             onClick={onClearAllStudents}
             className="p-2.5 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
-            title="Sınıftaki tüm öğrencileri kaldır / sınıfı sıfırla"
+            title="Sınıftaki Tüm Öğrencileri Kaldır / Sınıfı Boşalt"
           >
             <Trash2 className="w-4 h-4" />
           </button>
-
-          {/* Karıştır & Sıfırla Dropdown/Buttons */}
-          <div className="flex items-center border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
-            <button
-              type="button"
-              onClick={onShuffleSeats}
-              className="p-2.5 text-slate-600 hover:text-blue-600 hover:bg-white transition-colors cursor-pointer"
-              title="Sıraları Rastgele Akıllı Karıştır"
-            >
-              <Shuffle className="w-4 h-4" />
-            </button>
-            <div className="w-px h-5 bg-slate-200" />
-            <button
-              type="button"
-              onClick={onResetSeats}
-              className="p-2.5 text-slate-600 hover:text-rose-600 hover:bg-white transition-colors cursor-pointer"
-              title="Varsayılan Sıralamaya Dön"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
     </div>

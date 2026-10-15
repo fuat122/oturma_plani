@@ -675,6 +675,86 @@ export default function App() {
     window.print();
   };
 
+  // DIRECT ACTION: OPEN OR CREATE GOOGLE DRIVE SPREADSHEET
+  const handleCreateOrOpenDriveSheet = async () => {
+    if (!currentClassroom) return;
+
+    // If spreadsheet already exists, open it immediately
+    if (currentClassroom.googleSpreadsheetUrl && !currentClassroom.googleSpreadsheetId?.startsWith('mock_')) {
+      window.open(currentClassroom.googleSpreadsheetUrl, '_blank');
+
+      // Also trigger a background sync to keep it up to date
+      const token = googleToken || (await getAccessToken());
+      if (token && currentClassroom.googleSpreadsheetId) {
+        syncClassroomToGoogleSheet(token, currentClassroom.googleSpreadsheetId, currentClassroom)
+          .then(() => {
+            updateClassroomState({
+              ...currentClassroom,
+              syncStatus: 'synced',
+              lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+            });
+            showToast('Google Drive E-Tablosu güncellendi ve açıldı.', 'success');
+          })
+          .catch((err) => console.warn('Background sync note:', err));
+      }
+      return;
+    }
+
+    // Classroom does not have a spreadsheet yet: Create one on user's Google Drive immediately!
+    setIsSyncingSheets(true);
+    showToast('Google Drive hesabınızda E-Tablo oluşturuluyor, lütfen bekleyiniz...', 'info');
+
+    try {
+      let token = googleToken || (await getAccessToken());
+
+      // If token is missing, authenticate via Google Sign-In first
+      if (!token) {
+        const loginResult = await googleSignIn();
+        if (loginResult) {
+          token = loginResult.accessToken;
+          setGoogleToken(token);
+          setIsGoogleConnected(true);
+          setGoogleUser(loginResult.user);
+        }
+      }
+
+      if (!token) {
+        showToast('Google Drive erişim izni alınamadı. Lütfen Google ile giriş yapınız.', 'warning');
+        setIsSyncingSheets(false);
+        return;
+      }
+
+      const { spreadsheetId, spreadsheetUrl } = await createGoogleSpreadsheet(
+        token,
+        currentClassroom
+      );
+
+      const updatedClass: Classroom = {
+        ...currentClassroom,
+        googleSpreadsheetId: spreadsheetId,
+        googleSpreadsheetUrl: spreadsheetUrl,
+        syncStatus: 'synced',
+        lastSyncedAt: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      updateClassroomState(updatedClass);
+      showToast(`Google Drive'da 'Sinif_Oturma_Plani_${currentClassroom.name}' oluşturuldu! E-Tablo yeni sekmede açılıyor...`, 'success');
+
+      // Attempt opening in new tab
+      const win = window.open(spreadsheetUrl, '_blank');
+      if (!win) {
+        // If popup was blocked by browser, open preview modal with prominent direct link
+        setIsSheetsModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Drive spreadsheet creation failed:', err);
+      showToast(`E-Tablo oluşturulamadı: ${err?.message || 'Bağlantı hatası'}`, 'warning');
+      setIsSheetsModalOpen(true);
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
   // SYNC TO GOOGLE SHEETS
   const handleTriggerSync = () => {
     if (!currentClassroom) return;
@@ -805,7 +885,9 @@ export default function App() {
               onShuffleSeats={handleShuffleSeats}
               onResetSeats={handleResetSeats}
               onClearAllStudents={handleClearAllStudents}
+              onOpenOrCreateDriveSheet={handleCreateOrOpenDriveSheet}
               isExportingPDF={isExportingPDF}
+              isSyncingSheets={isSyncingSheets}
             />
 
             {/* Smart Blackboard & Room Simulation Frontage */}

@@ -80,8 +80,8 @@ export const NewClassModal: React.FC<NewClassModalProps> = ({
     } else if (studentRosterMode === 'custom' && customListText.trim()) {
       // Parse custom student lines
       const lines = customListText.split('\n').filter((l) => l.trim().length > 0);
-      if (lines.length > 23) {
-        setError('Sınıf kapasitesi en fazla 23 öğrenci olabilir! Lütfen 23 veya daha az öğrenci giriniz.');
+      if (lines.length > seats.length) {
+        setError(`Sınıf kapasitesi sıra sayısı ile sınırlıdır (En fazla ${seats.length} öğrenci)!`);
         return;
       }
 

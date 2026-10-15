@@ -72,7 +72,7 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
                 </span>
               </div>
               <p className="text-xs text-emerald-100">
-                Google Sheets API v4 Standart Formatı • 23 Öğrenci Kapasitesi + Satır 24 Sınıf Notu
+                Google Sheets API v4 Standart Formatı • {classroom.seats.length > 0 ? classroom.seats.length : 24} Sıra Kapasitesi + Satır 24 Sınıf Notu
               </p>
             </div>
           </div>
@@ -135,7 +135,13 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
               className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Senkronize Ediliyor...' : 'E-Tabloyu Şimdi Güncelle'}</span>
+              <span>
+                {isSyncing
+                  ? 'İşleniyor...'
+                  : classroom.googleSpreadsheetUrl
+                  ? 'E-Tabloyu Şimdi Güncelle'
+                  : 'Google Drive\'da Oluştur ve Aç'}
+              </span>
             </button>
           </div>
         </div>
@@ -181,8 +187,17 @@ export const GoogleSheetsPreviewModal: React.FC<GoogleSheetsPreviewModalProps> =
           <div className="px-6 py-3 bg-amber-50 border-b border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-950">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Bu sınıf henüz Google Drive'a kaydedilmedi. "E-Tabloyu Şimdi Güncelle" butonuna basarak Google Drive hesabınızda oluşturabilir ve doğrudan linkini alabilirsiniz.</span>
+              <span>Bu sınıf henüz Google Drive'da oluşturulmadı. Aşağıdaki butona tıklayarak hemen oluşturabilir ve doğrudan linkini alabilirsiniz.</span>
             </div>
+            <button
+              type="button"
+              onClick={onTriggerSync}
+              disabled={isSyncing}
+              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Google Drive'da E-Tablo Oluştur</span>
+            </button>
           </div>
         )}
 
