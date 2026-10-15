@@ -158,10 +158,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onGoogleLogout}
-              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-              title="Google Hesabından Çıkış Yap"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-colors font-bold text-xs cursor-pointer shadow-2xs"
+              title="Hesaptan Çıkış Yap ve Verileri Temizle"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span>Çıkış Yap</span>
             </button>
           ) : (
             <button

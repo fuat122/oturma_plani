@@ -1,7 +1,7 @@
 import React from 'react';
-import { Classroom, Student, SeatSlot } from '../types';
+import { Classroom, Student } from '../types';
 import { StudentDeskCard } from './StudentDeskCard';
-import { UserCheck, Sparkles, Layers } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
 interface SeatingPlanGridProps {
   classroom: Classroom;
@@ -16,7 +16,6 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
   onSwapSeats,
   onOpenStudentReport,
   onRemoveStudentFromSeat,
-  onAssignStudentToSeat,
 }) => {
   // Extract blocks dynamically
   const uniqueBlockKeys = Array.from(new Set(classroom.seats.map((s) => s.block)));
@@ -49,9 +48,9 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
   const unseatedStudents = classroom.students.filter((st) => !seatedStudentIds.has(st.id));
 
   return (
-    <div className="w-full space-y-6">
-      {/* 3 Main Desks Blocks */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+    <div className="w-full space-y-3">
+      {/* 3 Main Desks Blocks: compact gap for zero-scroll single-screen display */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 relative">
         {uniqueBlockKeys.map((blockKey, blockIndex) => {
           const meta = blockMetadata[blockKey] || {
             name: `${blockKey.toUpperCase()} Bloku`,
@@ -67,26 +66,26 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
           return (
             <div
               key={blockKey}
-              className={`rounded-2xl border ${meta.border} ${meta.bg} p-4 sm:p-5 shadow-xs transition-all relative`}
+              className={`rounded-2xl border ${meta.border} ${meta.bg} p-3 sm:p-3.5 shadow-2xs transition-all relative`}
             >
               {/* Block Header */}
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200/80">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{meta.icon}</span>
+              <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/80">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">{meta.icon}</span>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 tracking-tight">
                       {meta.name}
                     </h3>
                   </div>
                 </div>
 
-                <span className="text-[10px] font-mono font-bold bg-white px-2 py-1 rounded-md text-slate-600 border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-mono font-bold bg-white px-1.5 py-0.5 rounded text-slate-600 border border-slate-200 shadow-2xs">
                   Blok {blockIndex + 1}
                 </span>
               </div>
 
-              {/* Rows within this block */}
-              <div className="space-y-4">
+              {/* Rows within this block: compact row spacing */}
+              <div className="space-y-2">
                 {rows.map((rowNum) => {
                   const rowSeats = blockSeats
                     .filter((s) => s.row === rowNum)
@@ -95,12 +94,12 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                   return (
                     <div key={rowNum} className="relative">
                       {/* Row Label Indicator */}
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium mb-1.5 px-1">
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium mb-1 px-0.5">
                         <span>{rowNum}. Sıra</span>
                       </div>
 
                       {/* 2 Desks / Seats Side-by-Side */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {rowSeats.map((seat) => {
                           const student = seat.studentId
                             ? classroom.students.find((st) => st.id === seat.studentId) || null
@@ -130,24 +129,24 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
 
       {/* Unassigned Students Dock (if any) */}
       {unseatedStudents.length > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 shadow-2xs">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-amber-200 text-amber-900">
-                <Layers className="w-4 h-4" />
+              <span className="p-1 rounded-md bg-amber-200 text-amber-900">
+                <Layers className="w-3.5 h-3.5" />
               </span>
               <div>
                 <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
                   Sıraya Yerleştirilmemiş Öğrenciler ({unseatedStudents.length})
                 </h4>
-                <p className="text-[11px] text-amber-800">
-                  Bu öğrencileri yukarıdaki boş sıralara sürükleyerek veya sıraya tıklayarak atayabilirsiniz.
+                <p className="text-[10px] text-amber-800">
+                  Bu öğrencileri yukarıdaki boş sıralara sürükleyerek atayabilirsiniz.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {unseatedStudents.map((st) => (
               <div
                 key={st.id}
@@ -161,7 +160,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                     })
                   );
                 }}
-                className="bg-white border border-amber-300 px-3 py-2 rounded-xl shadow-xs flex items-center gap-2 cursor-grab active:cursor-grabbing hover:border-amber-500 hover:shadow-md transition-all"
+                className="bg-white border border-amber-300 px-2.5 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-grab active:cursor-grabbing hover:border-amber-500 hover:shadow-sm transition-all"
               >
                 <span className="font-mono text-xs font-bold text-amber-800">
                   #{st.studentNumber}

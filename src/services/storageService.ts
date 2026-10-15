@@ -469,6 +469,17 @@ export function setActiveClassId(classId: string) {
   localStorage.setItem(STORAGE_KEYS.ACTIVE_CLASS_ID, classId);
 }
 
+export function clearStoredSessionData() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.TEACHERS);
+    localStorage.removeItem(STORAGE_KEYS.CLASSROOMS);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_TEACHER_ID);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_CLASS_ID);
+  } catch (err) {
+    console.error('Error clearing stored session data:', err);
+  }
+}
+
 export function createStarterClassroomForGoogleTeacher(teacher: Teacher): Classroom {
   const seats = generateDefaultSeats();
   const sampleNames = [

@@ -6,16 +6,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Classroom, Teacher, Student, ObservationCategory } from './types';
 import {
-  initializeStorage,
-  getStoredClassrooms,
-  getStoredTeachers,
   saveClassrooms,
   saveTeachers,
-  getCurrentTeacherId,
   setCurrentTeacherId,
-  getActiveCLassId,
   setActiveClassId,
   createStarterClassroomForGoogleTeacher,
+  clearStoredSessionData,
 } from './services/storageService';
 import { initAuth, googleSignIn, logout } from './services/firebaseAuth';
 import {
@@ -36,18 +32,20 @@ import { NewClassModal } from './components/NewClassModal';
 import { TeacherSwitcherModal } from './components/TeacherSwitcherModal';
 import { StudentManagementModal } from './components/StudentManagementModal';
 import { ConfirmModal } from './components/ConfirmModal';
-import { CheckCircle2, AlertCircle, Info, Sparkles, Cloud } from 'lucide-react';
+import { LoginWelcomeScreen } from './components/LoginWelcomeScreen';
+import { CheckCircle2, AlertCircle, Info, Sparkles, Cloud, GraduationCap } from 'lucide-react';
 
 export default function App() {
-  // Initial local storage setup for demo fallback
-  const [teachers, setTeachers] = useState<Teacher[]>(() => getStoredTeachers());
-  const [classrooms, setClassrooms] = useState<Classroom[]>(() => getStoredClassrooms());
-  const [currentTeacherId, setTeacherIdState] = useState<string>(() => getCurrentTeacherId());
-  const [activeClassId, setClassIdState] = useState<string | null>(() => getActiveCLassId());
-
-  // Google & Firebase Auth State
+  // Authentication status & loading state
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [googleUser, setGoogleUser] = useState<any | null>(null);
+
+  // STRICT ISOLATION & MEMORY SECURITY: Zero mock data on logged-out state
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [currentTeacherId, setTeacherIdState] = useState<string>('');
+  const [activeClassId, setClassIdState] = useState<string | null>(null);
 
   // Firestore saving state
   const [isFirestoreSaving, setIsFirestoreSaving] = useState(false);
@@ -89,11 +87,8 @@ export default function App() {
     }, 4000);
   }, []);
 
-  // Initialize storage and test connection on mount
+  // Test Firestore connection on mount
   useEffect(() => {
-    const seed = initializeStorage();
-    setTeachers(seed.teachers);
-    setClassrooms(seed.classrooms);
     testFirestoreConnection();
   }, []);
 
@@ -192,15 +187,34 @@ export default function App() {
       (user) => {
         if (user) {
           syncGoogleUserTeacher(user);
+        } else {
+          setIsGoogleConnected(false);
+          setGoogleUser(null);
+          setTeachers([]);
+          setClassrooms([]);
+          setTeacherIdState('');
+          setClassIdState(null);
+          clearStoredSessionData();
+          if (firestoreUnsubscribeRef.current) {
+            firestoreUnsubscribeRef.current();
+            firestoreUnsubscribeRef.current = null;
+          }
         }
+        setIsAuthChecking(false);
       },
       () => {
         setIsGoogleConnected(false);
         setGoogleUser(null);
+        setTeachers([]);
+        setClassrooms([]);
+        setTeacherIdState('');
+        setClassIdState(null);
+        clearStoredSessionData();
         if (firestoreUnsubscribeRef.current) {
           firestoreUnsubscribeRef.current();
           firestoreUnsubscribeRef.current = null;
         }
+        setIsAuthChecking(false);
       }
     );
 
@@ -214,12 +228,22 @@ export default function App() {
 
   // Current Active Teacher
   const activeTeacher = useMemo(() => {
-    return teachers.find((t) => t.id === currentTeacherId) || teachers[0];
-  }, [teachers, currentTeacherId]);
+    if (teachers.length > 0) {
+      return teachers.find((t) => t.id === currentTeacherId) || teachers[0];
+    }
+    return {
+      id: googleUser?.uid || 'guest',
+      name: googleUser?.displayName || 'Öğretmen',
+      email: googleUser?.email || '',
+      branch: 'Rehber Öğretmen',
+      isGoogleUser: true,
+    };
+  }, [teachers, currentTeacherId, googleUser]);
 
   // STRICT ISOLATION FILTER:
   // A teacher can ONLY see and access their own classes!
   const myClassrooms = useMemo(() => {
+    if (!activeTeacher.id) return [];
     return classrooms.filter((c) => c.teacherId === activeTeacher.id);
   }, [classrooms, activeTeacher.id]);
 
@@ -272,26 +296,25 @@ export default function App() {
     }
   };
 
-  // Google Logout
+  // Google Logout with Complete Memory and State Purge
   const handleGoogleLogout = async () => {
-    await logout();
-    if (firestoreUnsubscribeRef.current) {
-      firestoreUnsubscribeRef.current();
-      firestoreUnsubscribeRef.current = null;
+    try {
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+        firestoreUnsubscribeRef.current = null;
+      }
+      await logout();
+      setIsGoogleConnected(false);
+      setGoogleUser(null);
+      setTeachers([]);
+      setClassrooms([]);
+      setTeacherIdState('');
+      setClassIdState(null);
+      clearStoredSessionData();
+      showToast('Oturum kapatıldı. Tüm sınıf ve öğrenci verileri hafızadan tamamen silindi.', 'info');
+    } catch (err: any) {
+      showToast(`Çıkış yapılırken hata: ${err?.message || 'Bilinmeyen hata'}`, 'warning');
     }
-    setIsGoogleConnected(false);
-    setGoogleUser(null);
-
-    // Return to first demo teacher
-    const defaultTeacher = teachers.find((t) => !t.isGoogleUser) || teachers[0];
-    setTeacherIdState(defaultTeacher.id);
-    setCurrentTeacherId(defaultTeacher.id);
-    const defaultClasses = classrooms.filter((c) => c.teacherId === defaultTeacher.id);
-    if (defaultClasses.length > 0) {
-      setClassIdState(defaultClasses[0].id);
-      setActiveClassId(defaultClasses[0].id);
-    }
-    showToast('Google oturumu kapatıldı. Demo moduna dönüldü.', 'info');
   };
 
   // Helper to persist classroom changes to both state & Firestore
@@ -804,6 +827,37 @@ export default function App() {
     setIsReportModalOpen(true);
   };
 
+  // 1. Initial Authentication Loading State
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-blue-500/25 animate-pulse">
+          <GraduationCap className="w-8 h-8" />
+        </div>
+        <p className="text-base font-bold text-slate-100">Akıllı Sınıf Yükleniyor...</p>
+        <p className="text-xs text-slate-400 mt-1">Firebase Cloud Firestore oturumu kontrol ediliyor</p>
+      </div>
+    );
+  }
+
+  // 2. Logged-out State: Show dedicated "Lütfen Giriş Yapın" Login Welcome screen with ZERO mock data
+  if (!isGoogleConnected || !googleUser) {
+    return (
+      <>
+        {toastMessage && (
+          <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs font-medium border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200 no-print max-w-md">
+            {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+            {toastMessage.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />}
+            {toastMessage.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
+            <span className="leading-tight">{toastMessage.text}</span>
+          </div>
+        )}
+        <LoginWelcomeScreen onGoogleLogin={handleGoogleLogin} isLoading={false} />
+      </>
+    );
+  }
+
+  // 3. Authenticated State: Main Seating Plan & Dashboard
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/70 text-slate-900">
       {/* Toast Notification */}
@@ -832,8 +886,8 @@ export default function App() {
         isGoogleConnected={isGoogleConnected}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 no-print">
+      {/* Main Content Area: compact padding for zero-scroll viewport fitting */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-6 py-2.5 no-print">
         {currentClassroom ? (
           <>
             {/* Classroom Header & Control Bar */}
