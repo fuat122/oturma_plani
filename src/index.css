@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+@keyframes deskSlideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-desk-entrance {
+  animation: deskSlideUpFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.98); }
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
 @media print {
   @page {
     size: A4 landscape;

@@ -29,19 +29,19 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
       name: 'Duvar Kenarı Sıraları',
       icon: '🧱',
       border: 'border-amber-200/90',
-      bg: 'bg-amber-50/30',
+      bg: 'bg-amber-50/40',
     },
     orta: {
       name: 'Orta Blok Sıraları',
       icon: '🏛️',
       border: 'border-emerald-200/90',
-      bg: 'bg-emerald-50/30',
+      bg: 'bg-emerald-50/40',
     },
     cam: {
       name: 'Cam Kenarı Sıraları',
       icon: '🪟',
       border: 'border-sky-200/90',
-      bg: 'bg-sky-50/30',
+      bg: 'bg-sky-50/40',
     },
   };
 
@@ -52,14 +52,14 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
   const unseatedStudents = classroom.students.filter((st) => !seatedStudentIds.has(st.id));
 
   return (
-    <div className="w-full space-y-3">
+    <div key={classroom.id} className="w-full space-y-3">
       {/* 3 Main Desks Blocks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 relative">
         {uniqueBlockKeys.map((blockKey, blockIndex) => {
           const meta = blockMetadata[blockKey] || {
             name: `${blockKey.toUpperCase()} Bloku`,
             icon: '🪑',
-            border: 'border-slate-200',
+            border: 'border-slate-200/90',
             bg: 'bg-slate-50/40',
           };
 
@@ -70,12 +70,12 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
           return (
             <div
               key={blockKey}
-              className={`rounded-2xl border ${meta.border} ${meta.bg} p-3 sm:p-3.5 shadow-2xs transition-all relative`}
+              className={`rounded-2xl border ${meta.border} ${meta.bg} backdrop-blur-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out relative`}
             >
               {/* Block Header */}
               <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200/80">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-base">{meta.icon}</span>
+                  <span className="text-base select-none">{meta.icon}</span>
                   <div>
                     <h3 className="text-xs sm:text-sm font-bold text-slate-800 tracking-tight">
                       {meta.name}
@@ -83,7 +83,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                   </div>
                 </div>
 
-                <span className="text-[10px] font-mono font-bold bg-white px-1.5 py-0.5 rounded text-slate-600 border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-mono font-bold bg-white/90 px-2 py-0.5 rounded-full text-slate-600 border border-slate-200 shadow-2xs">
                   Blok {blockIndex + 1}
                 </span>
               </div>
@@ -99,15 +99,18 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                     <div key={rowNum} className="relative">
                       {/* Row Label Indicator */}
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium mb-1 px-0.5">
-                        <span>{rowNum}. Sıra</span>
+                        <span className="font-medium text-slate-500">{rowNum}. Sıra</span>
                       </div>
 
                       {/* 2 Desks / Seats Side-by-Side */}
                       <div className="grid grid-cols-2 gap-2">
-                        {rowSeats.map((seat) => {
+                        {rowSeats.map((seat, seatIndex) => {
                           const student = seat.studentId
                             ? classroom.students.find((st) => st.id === seat.studentId) || null
                             : null;
+
+                          // Stagger entrance animation across the entire classroom in an organic wave
+                          const staggerIndex = blockIndex * 8 + (rowNum - 1) * 2 + seatIndex;
 
                           return (
                             <StudentDeskCard
@@ -119,6 +122,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                               onOpenStudentReport={onOpenStudentReport}
                               onRemoveStudentFromSeat={onRemoveStudentFromSeat}
                               isReadOnly={readOnlyActive}
+                              staggerIndex={staggerIndex}
                             />
                           );
                         })}
@@ -134,10 +138,10 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
 
       {/* Unassigned Students Dock (if any) */}
       {unseatedStudents.length > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 shadow-2xs">
+        <div className="bg-amber-50/90 backdrop-blur-md border border-amber-200/90 rounded-2xl p-3 shadow-sm transition-all duration-200 ease-in-out">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="p-1 rounded-md bg-amber-200 text-amber-900">
+              <span className="p-1.5 rounded-xl bg-amber-200/80 text-amber-900 shadow-2xs">
                 <Layers className="w-3.5 h-3.5" />
               </span>
               <div>
@@ -168,24 +172,26 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                     })
                   );
                 }}
-                className={`bg-white border border-amber-300 px-2.5 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition-all ${
+                className={`bg-white/95 border border-amber-300/80 px-2.5 py-1.5 rounded-xl shadow-2xs hover:shadow-xs flex items-center gap-1.5 transition-all duration-200 ease-in-out ${
                   readOnlyActive
                     ? 'cursor-default'
-                    : 'cursor-grab active:cursor-grabbing hover:border-amber-500 hover:shadow-sm'
+                    : 'cursor-grab active:cursor-grabbing hover:border-amber-500 hover:-translate-y-0.5 active:scale-[0.98]'
                 }`}
               >
-                <span className="font-mono text-xs font-bold text-amber-800">
+                <span className="font-mono text-xs font-bold text-amber-900">
                   #{st.studentNumber}
                 </span>
                 <span className="text-xs font-semibold text-slate-800">
                   {st.fullName}
                 </span>
                 <span
-                  className={`text-[9px] font-bold px-1 rounded ${
-                    st.gender === 'K' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                  className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs ${
+                    st.gender === 'K'
+                      ? 'bg-rose-100 text-rose-800 border-rose-200'
+                      : 'bg-blue-100 text-blue-800 border-blue-200'
                   }`}
                 >
-                  {st.gender === 'K' ? 'Kız' : 'Erk'}
+                  {st.gender === 'K' ? 'Kız' : 'Erkek'}
                 </span>
               </div>
             ))}
