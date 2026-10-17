@@ -7,12 +7,18 @@ import {
   Plus,
   Cloud,
   LogOut,
-  Database,
+  Building2,
+  UserCheck,
+  Lock,
+  RefreshCw,
 } from 'lucide-react';
 
 interface NavbarProps {
   activeTeacher: Teacher;
   classrooms: Classroom[];
+  schoolClassrooms: Classroom[];
+  activeTab: 'my_classes' | 'school_classes';
+  onTabChange: (tab: 'my_classes' | 'school_classes') => void;
   selectedClassId: string;
   onSelectClass: (classId: string) => void;
   onOpenNewClassModal: () => void;
@@ -20,11 +26,15 @@ interface NavbarProps {
   onOpenGoogleLogin: () => void;
   onGoogleLogout: () => void;
   isGoogleConnected: boolean;
+  isLoadingSchoolClasses?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTeacher,
   classrooms,
+  schoolClassrooms,
+  activeTab,
+  onTabChange,
   selectedClassId,
   onSelectClass,
   onOpenNewClassModal,
@@ -32,13 +42,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenGoogleLogin,
   onGoogleLogout,
   isGoogleConnected,
+  isLoadingSchoolClasses = false,
 }) => {
+  const currentClassList = activeTab === 'my_classes' ? classrooms : schoolClassrooms;
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs no-print">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Left: Brand & Class Selector */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        {/* Left: Brand & Tab Mode Switcher */}
+        <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
               <GraduationCap className="w-6 h-6" />
             </div>
@@ -54,22 +67,84 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          <div className="h-6 w-px bg-slate-200 hidden md:block" />
+          <div className="h-6 w-px bg-slate-200 hidden md:block shrink-0" />
 
-          {/* Active Teacher's Classrooms Dropdown */}
-          <div className="flex items-center gap-2">
+          {/* MAIN TAB SWITCHER: 'Sınıflarım' vs 'Okul Sınıfları (Salt Okunur)' */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/80 shrink-0">
+            <button
+              type="button"
+              onClick={() => onTabChange('my_classes')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'my_classes'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Kendi oluşturduğunuz ve yönettiğiniz sınıflar"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Sınıflarım</span>
+              {classrooms.length > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    activeTab === 'my_classes'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {classrooms.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onTabChange('school_classes')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'school_classes'
+                  ? 'bg-amber-100/90 text-amber-900 shadow-xs border border-amber-300'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Okuldaki diğer öğretmenlerin oluşturduğu sınıf oturma düzenleri (Salt Okunur)"
+            >
+              <Building2 className="w-3.5 h-3.5 text-amber-700" />
+              <span>Okul Sınıfları</span>
+              <span className="hidden sm:inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                <Lock className="w-2.5 h-2.5" />
+                Salt Okunur
+              </span>
+              {schoolClassrooms.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/70 text-amber-900">
+                  {schoolClassrooms.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Active Classrooms Selector */}
+          <div className="flex items-center gap-1.5">
             <div className="relative">
               <select
                 value={selectedClassId}
                 onChange={(e) => onSelectClass(e.target.value)}
-                className="appearance-none bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs font-bold pl-3 pr-8 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+                className={`appearance-none text-xs font-bold pl-3 pr-8 py-2 rounded-xl border focus:outline-hidden focus:ring-2 cursor-pointer transition-all ${
+                  activeTab === 'school_classes'
+                    ? 'bg-amber-50 hover:bg-amber-100/80 text-amber-950 border-amber-300 focus:ring-amber-500'
+                    : 'bg-slate-100 hover:bg-slate-200/80 text-slate-800 border-slate-200 focus:ring-blue-500'
+                }`}
               >
-                {classrooms.length === 0 ? (
-                  <option value="">(Sınıf Yok - Yeni Oluşturun)</option>
+                {currentClassList.length === 0 ? (
+                  <option value="">
+                    {isLoadingSchoolClasses
+                      ? 'Sınıflar aranıyor...'
+                      : activeTab === 'school_classes'
+                      ? '(Kayıtlı okul sınıfı bulunamadı)'
+                      : '(Sınıf Yok - Yeni Oluşturun)'}
+                  </option>
                 ) : (
-                  classrooms.map((c) => (
+                  currentClassList.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.grade} - {c.students.length} Öğrenci)
+                      {c.name} {c.teacherName ? `• ${c.teacherName}` : ''} ({c.grade} - {c.students.length} Öğrenci)
+                      {c.isReadOnly ? ' [Salt Okunur]' : ''}
                     </option>
                   ))
                 )}
@@ -77,22 +152,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            <button
-              type="button"
-              onClick={onOpenNewClassModal}
-              className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer"
-              title="Yeni Sınıf Oluştur"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+            {/* Yeni Sınıf Oluştur Butonu (Sadece 'Sınıflarım' sekmesinde aktiftir) */}
+            {activeTab === 'my_classes' && (
+              <button
+                type="button"
+                onClick={onOpenNewClassModal}
+                className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer"
+                title="Yeni Sınıf Oluştur"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
+
+            {activeTab === 'school_classes' && isLoadingSchoolClasses && (
+              <RefreshCw className="w-4 h-4 text-amber-600 animate-spin ml-1" />
+            )}
           </div>
         </div>
 
         {/* Center/Right: Firestore Sync Status & Teacher Profile */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           {/* Firestore Cloud Sync Badge */}
           <div
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-sky-200 bg-sky-50/90 text-sky-900 text-xs font-semibold shadow-2xs"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-sky-200 bg-sky-50/90 text-sky-900 text-xs font-semibold shadow-2xs"
             title="Tüm sınıf verileri Firebase Cloud Firestore veritabanında güvenle saklanmaktadır"
           >
             <Cloud className="w-3.5 h-3.5 text-sky-600" />
@@ -126,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {activeTeacher.name.charAt(0)}
               </div>
             )}
-            <div className="hidden lg:block min-w-0 max-w-[160px]">
+            <div className="hidden xl:block min-w-0 max-w-[140px]">
               <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
                 <span>{activeTeacher.name}</span>
                 {activeTeacher.isGoogleUser ? (
@@ -162,7 +244,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Hesaptan Çıkış Yap ve Verileri Temizle"
             >
               <LogOut className="w-3.5 h-3.5 text-rose-600" />
-              <span>Çıkış Yap</span>
+              <span className="hidden sm:inline">Çıkış Yap</span>
             </button>
           ) : (
             <button

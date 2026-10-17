@@ -29,7 +29,7 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
         <div className="flex justify-between items-center text-xs text-slate-600 mt-3 font-medium px-4">
           <div>
             <span className="text-slate-400">Rehber / Danışman Öğretmen:</span>{' '}
-            <strong className="text-slate-800">{teacher.name}</strong> ({teacher.branch})
+            <strong className="text-slate-800">{classroom.teacherName || teacher.name}</strong> ({teacher.branch})
           </div>
           <div>
             <span className="text-slate-400">Öğretim Yılı:</span>{' '}

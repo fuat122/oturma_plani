@@ -9,6 +9,7 @@ interface StudentDeskCardProps {
   onSwapSeats: (sourceSeatId: string, targetSeatId: string) => void;
   onOpenStudentReport: (student: Student) => void;
   onRemoveStudentFromSeat?: (seatId: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const StudentDeskCard: React.FC<StudentDeskCardProps> = ({
@@ -17,12 +18,13 @@ export const StudentDeskCard: React.FC<StudentDeskCardProps> = ({
   onSwapSeats,
   onOpenStudentReport,
   onRemoveStudentFromSeat,
+  isReadOnly = false,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragStart = (e: React.DragEvent) => {
-    if (!student) return;
+    if (!student || isReadOnly) return;
     setIsDragging(true);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData(
@@ -39,21 +41,25 @@ export const StudentDeskCard: React.FC<StudentDeskCardProps> = ({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (isReadOnly) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
+    if (isReadOnly) return;
     e.preventDefault();
     setIsDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    if (isReadOnly) return;
     e.preventDefault();
     setIsDragOver(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (isReadOnly) return;
     e.preventDefault();
     setIsDragOver(false);
 
@@ -86,27 +92,35 @@ export const StudentDeskCard: React.FC<StudentDeskCardProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`relative group rounded-xl transition-all duration-150 ${
-        isDragOver
+        isDragOver && !isReadOnly
           ? 'scale-[1.02] ring-2 ring-blue-500 shadow-md bg-blue-50/90 z-20'
           : ''
       } ${
-        isDragging ? 'opacity-40 scale-95 border-dashed border-2 border-blue-400' : ''
+        isDragging && !isReadOnly ? 'opacity-40 scale-95 border-dashed border-2 border-blue-400' : ''
       }`}
     >
-      {/* Desk Simulation Container: compact height for zero-scroll viewport fitting */}
+      {/* Desk Simulation Container */}
       <div
-        draggable={!!student}
+        draggable={!!student && !isReadOnly}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         className={`p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between min-h-[74px] ${
           student
             ? isFemale
-              ? 'bg-rose-50/95 hover:bg-rose-100/80 border-rose-200/90 hover:border-rose-300 shadow-2xs hover:shadow-sm cursor-grab active:cursor-grabbing text-rose-950'
-              : 'bg-white hover:bg-slate-50/90 border-slate-200/90 hover:border-blue-300 shadow-2xs hover:shadow-sm cursor-grab active:cursor-grabbing text-slate-900'
-            : 'bg-slate-50/70 border-dashed border-2 border-slate-200 hover:bg-blue-50/40 hover:border-blue-300 cursor-pointer text-slate-400'
+              ? `bg-rose-50/95 border-rose-200/90 text-rose-950 shadow-2xs ${
+                  isReadOnly
+                    ? 'cursor-default'
+                    : 'hover:bg-rose-100/80 hover:border-rose-300 hover:shadow-sm cursor-grab active:cursor-grabbing'
+                }`
+              : `bg-white border-slate-200/90 text-slate-900 shadow-2xs ${
+                  isReadOnly
+                    ? 'cursor-default'
+                    : 'hover:bg-slate-50/90 hover:border-blue-300 hover:shadow-sm cursor-grab active:cursor-grabbing'
+                }`
+            : 'bg-slate-50/70 border-dashed border-2 border-slate-200 text-slate-400 cursor-default'
         }`}
       >
-        {/* Top Bar: NO "1. Sıra" / "2. Sıra" and NO drag icon! Just clean student meta badges or empty indicator */}
+        {/* Top Bar: Student Number and Gender badge or empty indicator */}
         {student ? (
           <div className="flex items-center justify-between text-[11px] mb-1">
             <span
@@ -142,55 +156,60 @@ export const StudentDeskCard: React.FC<StudentDeskCardProps> = ({
             <div
               className={`font-bold text-xs sm:text-[13px] leading-tight transition-colors line-clamp-1 ${
                 isFemale
-                  ? 'text-rose-950 group-hover:text-rose-800'
-                  : 'text-slate-900 group-hover:text-blue-700'
+                  ? 'text-rose-950'
+                  : 'text-slate-900'
               }`}
               title={displayName}
             >
               {displayName}
             </div>
 
-            {/* Bottom Meta & Action Area: Always fixed, sleek "Not Ekle" button without any "1 Gözlem" count badges! */}
-            <div
-              className={`flex items-center justify-between mt-1.5 pt-1 border-t text-[11px] ${
-                isFemale ? 'border-rose-200/60' : 'border-slate-100'
-              }`}
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenStudentReport(student);
-                }}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                  isFemale
-                    ? 'text-rose-700 bg-rose-100/70 hover:bg-rose-200/80'
-                    : 'text-slate-600 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-800'
+            {/* Bottom Meta & Action Area:
+                In Read-Only Mode: Observations and edit buttons are STRICTLY hidden (only name, number, and seating layout visible).
+                In Owner Mode: Fixed, sleek "Not Ekle" button is shown.
+            */}
+            {!isReadOnly && (
+              <div
+                className={`flex items-center justify-between mt-1.5 pt-1 border-t text-[11px] ${
+                  isFemale ? 'border-rose-200/60' : 'border-slate-100'
                 }`}
-                title="Gözlem geçmişini gör ve yeni not ekle"
               >
-                <MessageSquare className="w-3 h-3 shrink-0" />
-                <span>Not Ekle</span>
-              </button>
-
-              {onRemoveStudentFromSeat && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRemoveStudentFromSeat(seat.id);
+                    onOpenStudentReport(student);
                   }}
-                  className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity cursor-pointer ${
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                     isFemale
-                      ? 'text-rose-400 hover:text-rose-700 hover:bg-rose-200/60'
-                      : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                      ? 'text-rose-700 bg-rose-100/70 hover:bg-rose-200/80'
+                      : 'text-slate-600 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-800'
                   }`}
-                  title="Öğrenciyi bu sıradan kaldır"
+                  title="Gözlem geçmişini gör ve yeni not ekle"
                 >
-                  <UserX className="w-3 h-3" />
+                  <MessageSquare className="w-3 h-3 shrink-0" />
+                  <span>Not Ekle</span>
                 </button>
-              )}
-            </div>
+
+                {onRemoveStudentFromSeat && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveStudentFromSeat(seat.id);
+                    }}
+                    className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity cursor-pointer ${
+                      isFemale
+                        ? 'text-rose-400 hover:text-rose-700 hover:bg-rose-200/60'
+                        : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                    }`}
+                    title="Öğrenciyi bu sıradan kaldır"
+                  >
+                    <UserX className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="py-2 flex items-center justify-center text-slate-400 text-center">

@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   doc,
   setDoc,
   getDoc,
@@ -184,6 +185,7 @@ export async function saveClassroomToFirestore(
   const payload = {
     id: classroom.id,
     teacherId: userId,
+    teacherName: classroom.teacherName || '',
     name: classroom.name,
     grade: classroom.grade,
     branchName: classroom.branchName || '',
@@ -202,6 +204,65 @@ export async function saveClassroomToFirestore(
     await setDoc(docRef, payload, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `teachers/${userId}/classes/${classroom.id}`);
+  }
+}
+
+/**
+ * Fetch all school classes across all teachers (Okul Sınıf Düzenleri - Salt Okunur)
+ * For classes not belonging to the current teacher:
+ * - Marked as isReadOnly: true
+ * - Personal observations and notes are completely stripped ([]) so personal comments remain private
+ * - Only student names, numbers, gender and seating arrangement are exposed
+ */
+export async function fetchAllSchoolClasses(currentUserId?: string): Promise<Classroom[]> {
+  try {
+    const classesGroup = collectionGroup(db, 'classes');
+    const snapshot = await getDocs(classesGroup);
+    const classes: Classroom[] = [];
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const isOwner = currentUserId && data.teacherId === currentUserId;
+
+      classes.push({
+        id: docSnap.id,
+        teacherId: data.teacherId || '',
+        teacherName: data.teacherName || 'Öğretmen',
+        name: data.name || 'İsimsiz Sınıf',
+        grade: data.grade || '9. Sınıf',
+        branchName: data.branchName || '',
+        academicYear: data.academicYear || '2026-2027',
+        maxCapacity: typeof data.maxCapacity === 'number' ? data.maxCapacity : 24,
+        layoutType: data.layoutType || '3-block-standard',
+        students: Array.isArray(data.students)
+          ? data.students.map((s: any) => ({
+              id: s.id,
+              studentNumber: s.studentNumber,
+              fullName: s.fullName,
+              gender: s.gender,
+              seatCode: s.seatCode,
+            }))
+          : [],
+        seats: Array.isArray(data.seats) ? data.seats : [],
+        // Privacy rule: foreign teachers NEVER receive observations or private classNotes
+        observations: isOwner && Array.isArray(data.observations) ? data.observations : [],
+        classNotes: isOwner && Array.isArray(data.classNotes) ? data.classNotes : [],
+        syncStatus: 'synced',
+        lastSyncedAt: data.updatedAt || new Date().toISOString(),
+        createdAt: data.createdAt || new Date().toISOString(),
+        isReadOnly: !isOwner,
+      });
+    });
+
+    return classes.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+  } catch (error) {
+    console.error('Error fetching school classes:', error);
+    try {
+      handleFirestoreError(error, OperationType.LIST, 'classes (collectionGroup)');
+    } catch {
+      // Graceful fallback
+    }
+    return [];
   }
 }
 

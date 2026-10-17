@@ -56,6 +56,7 @@ export interface ClassNote {
 export interface Classroom {
   id: string;
   teacherId: string;
+  teacherName?: string;
   name: string; // e.g., "9-A"
   grade: GradeLevel;
   branchName?: string;
@@ -69,4 +70,5 @@ export interface Classroom {
   lastSyncedAt?: string;
   syncStatus?: 'synced' | 'saving' | 'offline' | 'error';
   createdAt: string;
+  isReadOnly?: boolean;
 }

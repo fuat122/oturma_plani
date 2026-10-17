@@ -525,6 +525,7 @@ export function createStarterClassroomForGoogleTeacher(teacher: Teacher): Classr
   return {
     id: classId,
     teacherId: teacher.id,
+    teacherName: teacher.name,
     name: '9-A',
     grade: '9. Sınıf',
     branchName: `${teacher.name} Danışmanlığında 9-A Sınıfı`,

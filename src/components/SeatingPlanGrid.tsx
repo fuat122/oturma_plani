@@ -9,6 +9,7 @@ interface SeatingPlanGridProps {
   onOpenStudentReport: (student: Student) => void;
   onRemoveStudentFromSeat?: (seatId: string) => void;
   onAssignStudentToSeat?: (studentId: string, seatId: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
@@ -16,7 +17,10 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
   onSwapSeats,
   onOpenStudentReport,
   onRemoveStudentFromSeat,
+  isReadOnly = false,
 }) => {
+  const readOnlyActive = isReadOnly || !!classroom.isReadOnly;
+
   // Extract blocks dynamically
   const uniqueBlockKeys = Array.from(new Set(classroom.seats.map((s) => s.block)));
 
@@ -49,7 +53,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
 
   return (
     <div className="w-full space-y-3">
-      {/* 3 Main Desks Blocks: compact gap for zero-scroll single-screen display */}
+      {/* 3 Main Desks Blocks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 relative">
         {uniqueBlockKeys.map((blockKey, blockIndex) => {
           const meta = blockMetadata[blockKey] || {
@@ -114,6 +118,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                               onSwapSeats={onSwapSeats}
                               onOpenStudentReport={onOpenStudentReport}
                               onRemoveStudentFromSeat={onRemoveStudentFromSeat}
+                              isReadOnly={readOnlyActive}
                             />
                           );
                         })}
@@ -140,7 +145,9 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                   Sıraya Yerleştirilmemiş Öğrenciler ({unseatedStudents.length})
                 </h4>
                 <p className="text-[10px] text-amber-800">
-                  Bu öğrencileri yukarıdaki boş sıralara sürükleyerek atayabilirsiniz.
+                  {readOnlyActive
+                    ? 'Bu sınıfa kayıtlı olup henüz sıraya atanmamış öğrenciler (Salt Okunur)'
+                    : 'Bu öğrencileri yukarıdaki boş sıralara sürükleyerek atayabilirsiniz.'}
                 </p>
               </div>
             </div>
@@ -150,8 +157,9 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
             {unseatedStudents.map((st) => (
               <div
                 key={st.id}
-                draggable
+                draggable={!readOnlyActive}
                 onDragStart={(e) => {
+                  if (readOnlyActive) return;
                   e.dataTransfer.setData(
                     'application/json',
                     JSON.stringify({
@@ -160,7 +168,11 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                     })
                   );
                 }}
-                className="bg-white border border-amber-300 px-2.5 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-grab active:cursor-grabbing hover:border-amber-500 hover:shadow-sm transition-all"
+                className={`bg-white border border-amber-300 px-2.5 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition-all ${
+                  readOnlyActive
+                    ? 'cursor-default'
+                    : 'cursor-grab active:cursor-grabbing hover:border-amber-500 hover:shadow-sm'
+                }`}
               >
                 <span className="font-mono text-xs font-bold text-amber-800">
                   #{st.studentNumber}

@@ -19,6 +19,7 @@ import {
   saveClassroomToFirestore,
   deleteClassroomFromFirestore,
   testFirestoreConnection,
+  fetchAllSchoolClasses,
 } from './services/firestoreService';
 import { exportSeatingPlanToPDF } from './services/pdfService';
 import { exportClassroomToExcel } from './services/excelService';
@@ -33,7 +34,7 @@ import { TeacherSwitcherModal } from './components/TeacherSwitcherModal';
 import { StudentManagementModal } from './components/StudentManagementModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { LoginWelcomeScreen } from './components/LoginWelcomeScreen';
-import { CheckCircle2, AlertCircle, Info, Sparkles, Cloud, GraduationCap } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, Sparkles, Cloud, GraduationCap, Building2, UserCheck, Lock } from 'lucide-react';
 
 export default function App() {
   // Authentication status & loading state
@@ -46,6 +47,12 @@ export default function App() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [currentTeacherId, setTeacherIdState] = useState<string>('');
   const [activeClassId, setClassIdState] = useState<string | null>(null);
+
+  // TAB STATE: 'my_classes' vs 'school_classes' (Okul Sınıf Düzenleri - Salt Okunur)
+  const [activeTab, setActiveTab] = useState<'my_classes' | 'school_classes'>('my_classes');
+  const [schoolClassrooms, setSchoolClassrooms] = useState<Classroom[]>([]);
+  const [selectedSchoolClassId, setSelectedSchoolClassId] = useState<string | null>(null);
+  const [isLoadingSchoolClasses, setIsLoadingSchoolClasses] = useState(false);
 
   // Firestore saving state
   const [isFirestoreSaving, setIsFirestoreSaving] = useState(false);
@@ -247,20 +254,62 @@ export default function App() {
     return classrooms.filter((c) => c.teacherId === activeTeacher.id);
   }, [classrooms, activeTeacher.id]);
 
-  // Active Classroom selection
+  // Load School Classes across all teachers (Okul Sınıf Düzenleri - Salt Okunur)
+  const loadSchoolClasses = useCallback(async () => {
+    if (!googleUser?.uid) return;
+    setIsLoadingSchoolClasses(true);
+    try {
+      const allSchoolClasses = await fetchAllSchoolClasses(googleUser.uid);
+      setSchoolClassrooms(allSchoolClasses);
+      if (allSchoolClasses.length > 0) {
+        setSelectedSchoolClassId((prev) => {
+          if (prev && allSchoolClasses.some((c) => c.id === prev)) return prev;
+          return allSchoolClasses[0].id;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load school classes:', err);
+    } finally {
+      setIsLoadingSchoolClasses(false);
+    }
+  }, [googleUser?.uid]);
+
+  // Tab switch handler: Sınıflarım vs Okul Sınıfları (Salt Okunur)
+  const handleTabChange = (tab: 'my_classes' | 'school_classes') => {
+    setActiveTab(tab);
+    if (tab === 'school_classes') {
+      loadSchoolClasses();
+      showToast('Okul Sınıf Düzenleri açıldı (Salt Okunur Mod).', 'info');
+    } else {
+      showToast('Kendi sınıflarınıza dönüldü (Düzenleme Yetkisi Aktif).', 'info');
+    }
+  };
+
+  // Active Classroom selection (respects active tab: my_classes vs school_classes)
   const currentClassroom = useMemo(() => {
+    if (activeTab === 'school_classes') {
+      if (schoolClassrooms.length === 0) return null;
+      const found = schoolClassrooms.find((c) => c.id === selectedSchoolClassId);
+      return found || schoolClassrooms[0];
+    }
+
     if (myClassrooms.length === 0) return null;
     const found = myClassrooms.find((c) => c.id === activeClassId);
     return found || myClassrooms[0];
-  }, [myClassrooms, activeClassId]);
+  }, [activeTab, schoolClassrooms, selectedSchoolClassId, myClassrooms, activeClassId]);
 
-  // Keep activeClassId synchronized
+  // Read-Only flag for current classroom
+  const isCurrentClassReadOnly = useMemo(() => {
+    return activeTab === 'school_classes' || !!currentClassroom?.isReadOnly;
+  }, [activeTab, currentClassroom?.isReadOnly]);
+
+  // Keep activeClassId synchronized for my_classes
   useEffect(() => {
-    if (currentClassroom && currentClassroom.id !== activeClassId) {
+    if (activeTab === 'my_classes' && currentClassroom && currentClassroom.id !== activeClassId) {
       setClassIdState(currentClassroom.id);
       setActiveClassId(currentClassroom.id);
     }
-  }, [currentClassroom, activeClassId]);
+  }, [activeTab, currentClassroom, activeClassId]);
 
   // Switch Teacher handler (Strict Isolation Verification)
   const handleSelectTeacher = (teacher: Teacher) => {
@@ -308,6 +357,9 @@ export default function App() {
       setGoogleUser(null);
       setTeachers([]);
       setClassrooms([]);
+      setSchoolClassrooms([]);
+      setSelectedSchoolClassId(null);
+      setActiveTab('my_classes');
       setTeacherIdState('');
       setClassIdState(null);
       clearStoredSessionData();
@@ -320,6 +372,12 @@ export default function App() {
   // Helper to persist classroom changes to both state & Firestore
   const persistClassroomChange = useCallback(
     async (updatedClass: Classroom) => {
+      // Guard: Never modify or write read-only school classes
+      if (isCurrentClassReadOnly || updatedClass.isReadOnly) {
+        showToast('Salt Okunur modda olan bir sınıfta değişiklik yapılamaz.', 'warning');
+        return;
+      }
+
       // 1. Update local state immediately for instant responsive UI
       setClassrooms((prev) => {
         const next = prev.map((c) => (c.id === updatedClass.id ? updatedClass : c));
@@ -331,7 +389,10 @@ export default function App() {
       if (isGoogleConnected && googleUser?.uid && updatedClass.teacherId === googleUser.uid) {
         setIsFirestoreSaving(true);
         try {
-          await saveClassroomToFirestore(googleUser.uid, updatedClass);
+          await saveClassroomToFirestore(googleUser.uid, {
+            ...updatedClass,
+            teacherName: activeTeacher.name,
+          });
         } catch (err) {
           console.error('Firestore save failed:', err);
         } finally {
@@ -339,13 +400,18 @@ export default function App() {
         }
       }
     },
-    [isGoogleConnected, googleUser]
+    [isCurrentClassReadOnly, isGoogleConnected, googleUser, activeTeacher.name, showToast]
   );
 
   // SWAP SEATS LOGIC (HTML5 Drag & Drop)
   const handleSwapSeats = useCallback(
     (sourceSeatId: string, targetSeatId: string) => {
-      if (!currentClassroom) return;
+      if (!currentClassroom || isCurrentClassReadOnly) {
+        if (isCurrentClassReadOnly) {
+          showToast('Salt Okunur modda sıra yerleri değiştirilemez.', 'warning');
+        }
+        return;
+      }
 
       const newSeats = currentClassroom.seats.map((seat) => ({ ...seat }));
       const newStudents = currentClassroom.students.map((st) => ({ ...st }));
@@ -390,13 +456,13 @@ export default function App() {
         showToast(`${sName} ${targetSeat.code} numaralı sıraya taşındı.`, 'info');
       }
     },
-    [currentClassroom, persistClassroomChange, showToast]
+    [currentClassroom, isCurrentClassReadOnly, persistClassroomChange, showToast]
   );
 
   // REMOVE STUDENT FROM SEAT
   const handleRemoveStudentFromSeat = useCallback(
     (seatId: string) => {
-      if (!currentClassroom) return;
+      if (!currentClassroom || isCurrentClassReadOnly) return;
 
       const newSeats = currentClassroom.seats.map((seat) => ({ ...seat }));
       const newStudents = currentClassroom.students.map((st) => ({ ...st }));
@@ -711,7 +777,10 @@ export default function App() {
 
   // SHUFFLE SEATS
   const handleShuffleSeats = () => {
-    if (!currentClassroom) return;
+    if (!currentClassroom || isCurrentClassReadOnly) {
+      if (isCurrentClassReadOnly) showToast('Salt Okunur modda sıralar karıştırılamaz.', 'warning');
+      return;
+    }
 
     setConfirmDialog({
       isOpen: true,
@@ -752,7 +821,10 @@ export default function App() {
 
   // RESET SEATS BY STUDENT NUMBER
   const handleResetSeats = () => {
-    if (!currentClassroom) return;
+    if (!currentClassroom || isCurrentClassReadOnly) {
+      if (isCurrentClassReadOnly) showToast('Salt Okunur modda sıralar sıfırlanamaz.', 'warning');
+      return;
+    }
 
     setConfirmDialog({
       isOpen: true,
@@ -874,16 +946,28 @@ export default function App() {
       <Navbar
         activeTeacher={activeTeacher}
         classrooms={myClassrooms}
-        selectedClassId={activeClassId || ''}
+        schoolClassrooms={schoolClassrooms}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        selectedClassId={
+          activeTab === 'school_classes'
+            ? selectedSchoolClassId || ''
+            : activeClassId || ''
+        }
         onSelectClass={(id) => {
-          setClassIdState(id);
-          setActiveClassId(id);
+          if (activeTab === 'school_classes') {
+            setSelectedSchoolClassId(id);
+          } else {
+            setClassIdState(id);
+            setActiveClassId(id);
+          }
         }}
         onOpenNewClassModal={() => setIsNewClassModalOpen(true)}
         onOpenTeacherSwitcher={() => setIsTeacherSwitcherOpen(true)}
         onOpenGoogleLogin={handleGoogleLogin}
         onGoogleLogout={handleGoogleLogout}
         isGoogleConnected={isGoogleConnected}
+        isLoadingSchoolClasses={isLoadingSchoolClasses}
       />
 
       {/* Main Content Area: compact padding for zero-scroll viewport fitting */}
@@ -898,16 +982,21 @@ export default function App() {
               onExportExcel={handleExportExcel}
               onPrint={handlePrint}
               onOpenReports={() => {
+                if (isCurrentClassReadOnly) return;
                 setReportStudentId(null);
                 setIsReportModalOpen(true);
               }}
-              onOpenStudentManagement={() => setIsStudentManagementOpen(true)}
+              onOpenStudentManagement={() => {
+                if (isCurrentClassReadOnly) return;
+                setIsStudentManagementOpen(true);
+              }}
               onShuffleSeats={handleShuffleSeats}
               onResetSeats={handleResetSeats}
               onClearAllStudents={handleClearAllStudents}
               isExportingPDF={isExportingPDF}
               isExportingExcel={isExportingExcel}
               isFirestoreSaving={isFirestoreSaving}
+              isReadOnly={isCurrentClassReadOnly}
             />
 
             {/* Smart Blackboard & Room Simulation Frontage */}
@@ -917,12 +1006,39 @@ export default function App() {
             <SeatingPlanGrid
               classroom={currentClassroom}
               onSwapSeats={handleSwapSeats}
-              onOpenStudentReport={handleOpenStudentReport}
+              onOpenStudentReport={(st) => {
+                if (isCurrentClassReadOnly) return;
+                handleOpenStudentReport(st);
+              }}
               onRemoveStudentFromSeat={handleRemoveStudentFromSeat}
+              isReadOnly={isCurrentClassReadOnly}
             />
           </>
+        ) : activeTab === 'school_classes' ? (
+          /* Empty state if no school classes found */
+          <div className="text-center py-16 bg-white rounded-3xl border border-amber-200/90 p-8 shadow-xs max-w-xl mx-auto my-10">
+            <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto mb-4 text-3xl shadow-xs">
+              🏫
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">
+              Okulda Kayıtlı Başka Sınıf Bulunmuyor
+            </h2>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Diğer öğretmenler oturma planlarını oluşturdukça burada 'Salt Okunur' modda listelenecektir. Kişisel gözlem ve notlar gizlenir, yalnızca isim, numara ve oturma düzeni görünür.
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab('my_classes')}
+                className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Kendi Sınıflarıma Dön</span>
+              </button>
+            </div>
+          </div>
         ) : (
-          /* Empty state if teacher has no classes */
+          /* Empty state if teacher has no classes of their own */
           <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto my-12">
             <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 text-3xl shadow-xs">
               🏫
@@ -931,7 +1047,7 @@ export default function App() {
               {activeTeacher.name} İçin Henüz Sınıf Bulunmuyor
             </h2>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Sıkı izolasyon kuralı gereği diğer öğretmenlerin (9-A, 10-B vb.) sınıfları bu hesapta gizlidir. Yeni bir sınıf oluşturarak oturma planınızı ve Firebase Cloud Firestore bulut veritabanı senkronizasyonunuzu başlatabilirsiniz.
+              Yeni bir sınıf oluşturarak oturma planınızı ve Firebase Cloud Firestore bulut veritabanı senkronizasyonunuzu başlatabilirsiniz.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <button
@@ -963,8 +1079,8 @@ export default function App() {
 
       {/* MODALS */}
 
-      {/* 1. Student Report Panel (Tarih Bazlı Öğrenci Gözlemleri & Yorumları) */}
-      {currentClassroom && (
+      {/* 1. Student Report Panel (Tarih Bazlı Öğrenci Gözlemleri & Yorumları) - strictly disabled in read-only mode */}
+      {currentClassroom && !isCurrentClassReadOnly && (
         <ReportModal
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
@@ -1000,8 +1116,8 @@ export default function App() {
         googleUser={googleUser}
       />
 
-      {/* 4. Student Roster & Class Management Modal */}
-      {currentClassroom && (
+      {/* 4. Student Roster & Class Management Modal - strictly disabled in read-only mode */}
+      {currentClassroom && !isCurrentClassReadOnly && (
         <StudentManagementModal
           isOpen={isStudentManagementOpen}
           onClose={() => setIsStudentManagementOpen(false)}
