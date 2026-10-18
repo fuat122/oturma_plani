@@ -224,6 +224,11 @@ export async function fetchAllSchoolClasses(currentUserId?: string): Promise<Cla
       const data = docSnap.data();
       const isOwner = currentUserId && data.teacherId === currentUserId;
 
+      // Filter out logged in teacher's OWN classes so 'Okul Sınıfları' only lists other teachers' classes
+      if (isOwner) {
+        return;
+      }
+
       classes.push({
         id: docSnap.id,
         teacherId: data.teacherId || '',
@@ -245,12 +250,12 @@ export async function fetchAllSchoolClasses(currentUserId?: string): Promise<Cla
           : [],
         seats: Array.isArray(data.seats) ? data.seats : [],
         // Privacy rule: foreign teachers NEVER receive observations or private classNotes
-        observations: isOwner && Array.isArray(data.observations) ? data.observations : [],
-        classNotes: isOwner && Array.isArray(data.classNotes) ? data.classNotes : [],
+        observations: [],
+        classNotes: [],
         syncStatus: 'synced',
         lastSyncedAt: data.updatedAt || new Date().toISOString(),
         createdAt: data.createdAt || new Date().toISOString(),
-        isReadOnly: !isOwner,
+        isReadOnly: true,
       });
     });
 

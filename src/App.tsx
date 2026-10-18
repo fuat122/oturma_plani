@@ -260,19 +260,24 @@ export default function App() {
     setIsLoadingSchoolClasses(true);
     try {
       const allSchoolClasses = await fetchAllSchoolClasses(googleUser.uid);
-      setSchoolClassrooms(allSchoolClasses);
-      if (allSchoolClasses.length > 0) {
+      const otherTeachersClasses = allSchoolClasses.filter(
+        (c) => c.teacherId !== googleUser.uid && c.teacherId !== activeTeacher.id
+      );
+      setSchoolClassrooms(otherTeachersClasses);
+      if (otherTeachersClasses.length > 0) {
         setSelectedSchoolClassId((prev) => {
-          if (prev && allSchoolClasses.some((c) => c.id === prev)) return prev;
-          return allSchoolClasses[0].id;
+          if (prev && otherTeachersClasses.some((c) => c.id === prev)) return prev;
+          return otherTeachersClasses[0].id;
         });
+      } else {
+        setSelectedSchoolClassId(null);
       }
     } catch (err) {
       console.error('Failed to load school classes:', err);
     } finally {
       setIsLoadingSchoolClasses(false);
     }
-  }, [googleUser?.uid]);
+  }, [googleUser?.uid, activeTeacher.id]);
 
   // Tab switch handler: Sınıflarım vs Okul Sınıfları (Salt Okunur)
   const handleTabChange = (tab: 'my_classes' | 'school_classes') => {

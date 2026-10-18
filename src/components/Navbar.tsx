@@ -5,11 +5,9 @@ import {
   ShieldCheck,
   ChevronDown,
   Plus,
-  Cloud,
   LogOut,
   Building2,
   UserCheck,
-  Lock,
   RefreshCw,
 } from 'lucide-react';
 
@@ -105,14 +103,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 shadow-sm border border-amber-300/80 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 active:scale-[0.98]'
               }`}
-              title="Okuldaki diğer öğretmenlerin oluşturduğu sınıf oturma düzenleri (Salt Okunur)"
+              title="Okuldaki diğer öğretmenlerin oluşturduğu sınıf oturma düzenleri"
             >
               <Building2 className="w-3.5 h-3.5 text-amber-600" />
               <span>Okul Sınıfları</span>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200/70 shadow-2xs">
-                <Lock className="w-2.5 h-2.5 text-amber-700" />
-                <span>Salt Okunur</span>
-              </span>
               {schoolClassrooms.length > 0 && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950 shadow-2xs">
                   {schoolClassrooms.length}
@@ -171,17 +165,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Cloud Sync, Teacher Profile & Auth Actions */}
+        {/* Right Section: Teacher Profile & Auth Actions */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0 min-w-0">
-          {/* Firestore Cloud Sync Badge */}
-          <div
-            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-sky-200/80 bg-sky-50/80 backdrop-blur-xs text-sky-900 text-xs font-semibold shadow-2xs transition-all duration-200 hover:shadow-xs"
-            title="Tüm sınıf verileri Firebase Cloud Firestore veritabanında güvenle saklanmaktadır"
-          >
-            <Cloud className="w-3.5 h-3.5 text-sky-600" />
-            <span>Cloud Firestore</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
 
           {/* Teacher Profile Box */}
           <button

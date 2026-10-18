@@ -19,29 +19,57 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
       className="bg-white p-8 max-w-[1100px] mx-auto text-slate-900 border border-slate-300 shadow-sm print:border-none print:shadow-none print:p-2"
     >
       {/* Official Header */}
-      <div className="text-center border-b-2 border-slate-800 pb-4 mb-6">
-        <div className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+      <div className="text-center border-b-2 border-slate-900 pb-5 mb-6">
+        <div className="text-xs uppercase tracking-widest text-slate-600 font-bold mb-1">
           T.C. MİLLÎ EĞİTİM BAKANLIĞI
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-1 uppercase">
-          {classroom.grade} {classroom.name} SINIFI RESMİ OTURMA PLANI
+
+        {/* Çok daha büyük ve belirgin Sınıf Adı Ana Başlığı */}
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 uppercase mt-0.5">
+          {classroom.grade} {classroom.name} SINIFI OTURMA PLANI
         </h1>
-        <div className="flex justify-between items-center text-xs text-slate-600 mt-3 font-medium px-4">
-          <div>
-            <span className="text-slate-400">Rehber / Danışman Öğretmen:</span>{' '}
-            <strong className="text-slate-800">{classroom.teacherName || teacher.name}</strong> ({teacher.branch})
-          </div>
-          <div>
-            <span className="text-slate-400">Öğretim Yılı:</span>{' '}
-            <strong className="text-slate-800">{classroom.academicYear}</strong>
-          </div>
-          <div>
-            <span className="text-slate-400">Öğrenci Sayısı:</span>{' '}
-            <strong className="text-slate-800">{classroom.students.length} / {classroom.seats.length} (Kapasite: {classroom.seats.length} Sıra)</strong>
-          </div>
-          <div>
-            <span className="text-slate-400">Düzenleme Tarihi:</span>{' '}
-            <strong className="text-slate-800">{new Date().toLocaleDateString('tr-TR')}</strong>
+
+        {/* Sayfanın üst ortasında kalın ve büyük fontla Danışman Öğretmen ve Öğretim Yılı Vurgusu */}
+        <div className="mt-4 p-3 bg-slate-50 border-2 border-slate-400 rounded-xl max-w-4xl mx-auto shadow-xs">
+          <div className="grid grid-cols-3 items-center text-center divide-x divide-slate-300">
+            {/* Danışman Öğretmen */}
+            <div className="px-3">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Danışman Öğretmen
+              </div>
+              <div className="text-base sm:text-lg font-black text-slate-950 mt-0.5">
+                {classroom.teacherName || teacher.name}
+              </div>
+              <div className="text-[11px] text-slate-600 font-medium">
+                {teacher.branch}
+              </div>
+            </div>
+
+            {/* Öğretim Yılı */}
+            <div className="px-3">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Öğretim Yılı
+              </div>
+              <div className="text-base sm:text-lg font-black text-slate-950 mt-0.5">
+                {classroom.academicYear}
+              </div>
+              <div className="text-[11px] text-slate-600 font-medium">
+                {classroom.branchName || 'Genel Ortaöğretim'}
+              </div>
+            </div>
+
+            {/* Sınıf Mevcudu & Tarih */}
+            <div className="px-3">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Mevcut / Kapasite
+              </div>
+              <div className="text-base sm:text-lg font-black text-slate-950 mt-0.5">
+                {classroom.students.length} / {classroom.seats.length} Öğrenci
+              </div>
+              <div className="text-[11px] text-slate-600 font-medium">
+                Tarih: {new Date().toLocaleDateString('tr-TR')}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -147,7 +175,7 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
       {/* Official Signatures Footer */}
       <div className="mt-12 pt-6 border-t border-slate-300 grid grid-cols-2 text-center text-xs text-slate-600">
         <div>
-          <div className="font-semibold text-slate-800">{teacher.name}</div>
+          <div className="font-semibold text-slate-800">{classroom.teacherName || teacher.name}</div>
           <div className="text-[11px] text-slate-500">{teacher.branch}</div>
           <div className="mt-8 text-[11px] text-slate-400">İmza: .......................................</div>
         </div>
