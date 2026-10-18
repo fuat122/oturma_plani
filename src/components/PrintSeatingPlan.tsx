@@ -7,6 +7,9 @@ interface PrintSeatingPlanProps {
 }
 
 export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, teacher }) => {
+  const consultantTeacherName = classroom.teacherName || teacher.name;
+  const fullTitle = `${consultantTeacherName} Danışmanlığında ${classroom.name} Sınıfı`;
+
   const blocks = [
     { key: 'duvar', name: 'DUVAR KENARI', prefix: 'D' },
     { key: 'orta', name: 'ORTA BLOK', prefix: 'O' },
@@ -25,9 +28,12 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
         </div>
 
         {/* Çok daha büyük ve belirgin Sınıf Adı Ana Başlığı */}
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 uppercase mt-0.5">
-          {classroom.grade} {classroom.name} SINIFI OTURMA PLANI
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 mt-0.5">
+          {fullTitle}
         </h1>
+        <div className="text-xs uppercase tracking-widest text-slate-600 font-bold mt-1">
+          OTURMA PLANI
+        </div>
 
         {/* Sayfanın üst ortasında kalın ve büyük fontla Danışman Öğretmen ve Öğretim Yılı Vurgusu */}
         <div className="mt-4 p-3 bg-slate-50 border-2 border-slate-400 rounded-xl max-w-4xl mx-auto shadow-xs">

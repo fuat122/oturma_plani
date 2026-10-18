@@ -150,7 +150,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                 </h4>
                 <p className="text-[10px] text-amber-800">
                   {readOnlyActive
-                    ? 'Bu sınıfa kayıtlı olup henüz sıraya atanmamış öğrenciler (Salt Okunur)'
+                    ? 'Bu sınıfa kayıtlı olup henüz sıraya atanmamış öğrenciler'
                     : 'Bu öğrencileri yukarıdaki boş sıralara sürükleyerek atayabilirsiniz.'}
                 </p>
               </div>

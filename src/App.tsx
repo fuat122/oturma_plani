@@ -284,9 +284,9 @@ export default function App() {
     setActiveTab(tab);
     if (tab === 'school_classes') {
       loadSchoolClasses();
-      showToast('Okul Sınıf Düzenleri açıldı (Salt Okunur Mod).', 'info');
+      showToast('Diğer Sınıflar listelendi.', 'info');
     } else {
-      showToast('Kendi sınıflarınıza dönüldü (Düzenleme Yetkisi Aktif).', 'info');
+      showToast('Kendi sınıflarınıza dönüldü.', 'info');
     }
   };
 
@@ -1029,7 +1029,7 @@ export default function App() {
               Okulda Kayıtlı Başka Sınıf Bulunmuyor
             </h2>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Diğer öğretmenler oturma planlarını oluşturdukça burada 'Salt Okunur' modda listelenecektir. Kişisel gözlem ve notlar gizlenir, yalnızca isim, numara ve oturma düzeni görünür.
+              Diğer öğretmenler oturma planlarını oluşturdukça burada listelenecektir. Kişisel gözlem ve notlar gizlenir, yalnızca isim, numara ve oturma düzeni görünür.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <button

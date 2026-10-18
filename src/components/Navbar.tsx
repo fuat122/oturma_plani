@@ -103,10 +103,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 shadow-sm border border-amber-300/80 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 active:scale-[0.98]'
               }`}
-              title="Okuldaki diğer öğretmenlerin oluşturduğu sınıf oturma düzenleri"
+              title="Diğer öğretmenlerin oluşturduğu sınıf oturma düzenleri"
             >
               <Building2 className="w-3.5 h-3.5 text-amber-600" />
-              <span>Okul Sınıfları</span>
+              <span>Diğer Sınıflar</span>
               {schoolClassrooms.length > 0 && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950 shadow-2xs">
                   {schoolClassrooms.length}
@@ -132,14 +132,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {isLoadingSchoolClasses
                       ? 'Sınıflar aranıyor...'
                       : activeTab === 'school_classes'
-                      ? '(Kayıtlı okul sınıfı bulunamadı)'
+                      ? '(Kayıtlı diğer sınıf bulunamadı)'
                       : '(Sınıf Yok - Yeni Oluşturun)'}
                   </option>
                 ) : (
                   currentClassList.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} {c.teacherName ? `• ${c.teacherName}` : ''} ({c.grade} - {c.students.length} Öğrenci)
-                      {c.isReadOnly ? ' [Salt Okunur]' : ''}
                     </option>
                   ))
                 )}

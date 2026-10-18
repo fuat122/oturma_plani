@@ -8,14 +8,12 @@ import {
   Shuffle,
   RotateCcw,
   BookOpen,
-  ShieldCheck,
   Trash2,
   Download,
   UserCog,
   ChevronDown,
   SlidersHorizontal,
   Lock,
-  Eye,
 } from 'lucide-react';
 
 interface ClassroomHeaderProps {
@@ -58,6 +56,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
   const capacityPercent = Math.round((classroom.students.length / totalSeats) * 100);
   const emptySeatsCount = Math.max(0, totalSeats - classroom.students.length);
   const teacherDisplayName = classroom.teacherName || activeTeacher.name;
+  const fullClassTitle = `${teacherDisplayName} Danışmanlığında ${classroom.name} Sınıfı`;
 
   return (
     <div
@@ -70,27 +69,15 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
         {/* Left: İri, Belirgin ve Ön Planda Sınıf Başlığı & Bilgiler */}
         <div className="space-y-1.5 min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
-              {classroom.name} SINIFI OTURMA DÜZENİ
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900">
+              {fullClassTitle}
             </h1>
-            {readOnlyActive && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-950 bg-amber-100/90 px-3 py-1 rounded-full border border-amber-300 shadow-2xs">
-                <Lock className="w-3.5 h-3.5 text-amber-700" />
-                <span>Salt Okunur (Okul Sınıfı)</span>
-              </span>
-            )}
           </div>
 
-          {/* Sınıf Detay Bilgileri: Öğretim Yılı, Danışman Öğretmen, Sınıf Kademesi, Öğrenci Sayısı */}
+          {/* Sınıf Detay Bilgileri: Sınıf Kademesi, Öğretim Yılı, Öğrenci Sayısı */}
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-slate-100/90 px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
               🎓 {classroom.grade} {classroom.branchName ? `• ${classroom.branchName}` : ''}
-            </span>
-            <span className="text-slate-300 hidden sm:inline">·</span>
-            <span className="inline-flex items-center gap-1.5 text-blue-900 bg-blue-50/90 px-3 py-0.5 rounded-full border border-blue-200/80 shadow-2xs font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>Danışman Öğretmen:</span>
-              <strong className="text-blue-950 font-bold">{teacherDisplayName}</strong>
             </span>
             <span className="text-slate-300 hidden sm:inline">·</span>
             <span className="inline-flex items-center gap-1 text-slate-700 bg-slate-100/80 px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs font-medium">
