@@ -9,7 +9,7 @@ export interface PDFExportOptions {
 
 /**
  * Exports strictly ONLY the visual seating plan to a SINGLE-PAGE A4 Landscape PDF.
- * Uses html2canvas + jsPDF direct placement to guarantee zero page-overflow and zero 2nd page.
+ * Uses html2canvas-pro with onclone color normalization + jsPDF direct placement.
  */
 export async function exportSeatingPlanToPDF(
   elementId: string,
@@ -53,7 +53,7 @@ export async function exportSeatingPlanToPDF(
   );
 
   const exportPromise = (async () => {
-    // 1. Render to high-DPI canvas
+    // 1. Render to high-DPI canvas with OKLCH-to-RGB normalization
     const canvas = await html2canvas(clonedNode, {
       scale: 2.2, // Ultra-sharp print quality (~300 DPI)
       useCORS: true,
@@ -62,6 +62,43 @@ export async function exportSeatingPlanToPDF(
       windowWidth: 1080,
       scrollX: 0,
       scrollY: 0,
+      onclone: (clonedDoc, element) => {
+        // Native canvas context converts ANY CSS color format (oklch, lab, color-mix) to standard rgb/#hex
+        const canvas2d = clonedDoc.createElement('canvas');
+        const ctx = canvas2d.getContext('2d');
+        if (!ctx) return;
+
+        const allNodes = [element, ...Array.from(element.querySelectorAll('*'))];
+        const colorProperties = [
+          'color',
+          'background-color',
+          'border-top-color',
+          'border-right-color',
+          'border-bottom-color',
+          'border-left-color',
+          'outline-color',
+          'text-decoration-color',
+        ];
+
+        for (const node of allNodes) {
+          const el = node as HTMLElement;
+          if (!el || !el.style) continue;
+
+          try {
+            const computed = window.getComputedStyle(el);
+            for (const prop of colorProperties) {
+              const val = computed.getPropertyValue(prop);
+              if (val && (val.includes('oklch') || val.includes('color(') || val.includes('lab('))) {
+                ctx.fillStyle = '#000000';
+                ctx.fillStyle = val;
+                el.style.setProperty(prop, ctx.fillStyle, 'important');
+              }
+            }
+          } catch (_) {
+            // Safe fallback: continue iterating
+          }
+        }
+      },
     });
 
     // 2. Create Single-Page A4 Landscape PDF
@@ -105,6 +142,11 @@ export async function exportSeatingPlanToPDF(
 
   try {
     await Promise.race([exportPromise, timeoutPromise]);
+  } catch (error: any) {
+    console.error('PDF generation error, attempting native print fallback:', error);
+    // If browser blocks canvas generation, fall back to native print
+    window.print();
+    throw error;
   } finally {
     if (document.body.contains(stagingContainer)) {
       document.body.removeChild(stagingContainer);

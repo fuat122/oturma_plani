@@ -15,30 +15,36 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
       key: 'duvar',
       name: 'DUVAR KENARI SIRALARI',
       icon: '🧱',
-      border: 'border-amber-400',
-      headerBg: 'bg-amber-100 text-amber-950',
+      borderColor: '#f59e0b',
+      headerBg: '#fef3c7',
+      headerColor: '#451a03',
     },
     {
       key: 'orta',
       name: 'ORTA BLOK SIRALARI',
       icon: '🏛️',
-      border: 'border-emerald-400',
-      headerBg: 'bg-emerald-100 text-emerald-950',
+      borderColor: '#10b981',
+      headerBg: '#d1fae5',
+      headerColor: '#064e3b',
     },
     {
       key: 'cam',
       name: 'CAM KENARI SIRALARI',
       icon: '🪟',
-      border: 'border-sky-400',
-      headerBg: 'bg-sky-100 text-sky-950',
+      borderColor: '#0284c7',
+      headerBg: '#e0f2fe',
+      headerColor: '#0c4a6e',
     },
   ];
 
   return (
     <div
       id="printable-seating-chart"
-      className="bg-white p-2.5 sm:p-3 max-w-[1060px] mx-auto text-slate-900 border-2 border-slate-900 shadow-none font-sans box-border"
+      className="p-2.5 sm:p-3 max-w-[1060px] mx-auto shadow-none font-sans box-border"
       style={{
+        backgroundColor: '#ffffff',
+        color: '#0f172a',
+        border: '2px solid #0f172a',
         pageBreakInside: 'avoid',
         breakInside: 'avoid',
         pageBreakAfter: 'avoid',
@@ -47,57 +53,105 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
       }}
     >
       {/* 1. Resmi Üst Başlık ve Kurum Alanı (Kompakt Tek Sayfa) */}
-      <div className="text-center border-b-2 border-slate-900 pb-1.5 mb-1.5">
-        <div className="text-[10px] uppercase tracking-widest text-slate-700 font-extrabold leading-tight">
+      <div
+        className="text-center pb-1.5 mb-1.5"
+        style={{ borderBottom: '2px solid #0f172a' }}
+      >
+        <div
+          className="text-[10px] uppercase tracking-widest font-extrabold leading-tight"
+          style={{ color: '#334155' }}
+        >
           T.C. MİLLÎ EĞİTİM BAKANLIĞI
         </div>
 
         {/* Çok Büyük ve Net Birleşik Ana Başlık */}
-        <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-950 uppercase mt-0.5 leading-tight">
+        <h1
+          className="text-base sm:text-lg font-black tracking-tight uppercase mt-0.5 leading-tight"
+          style={{ color: '#020617' }}
+        >
           {fullTitle}
         </h1>
-        <div className="text-[9px] uppercase tracking-widest text-slate-600 font-black leading-tight">
+        <div
+          className="text-[9px] uppercase tracking-widest font-black leading-tight"
+          style={{ color: '#475569' }}
+        >
           RESMÎ SINIF OTURMA PLANI
         </div>
 
         {/* Sayfa Ortasında Kalın ve Okunaklı Bilgi Paneli */}
-        <div className="mt-1 py-0.5 px-3 bg-slate-50 border border-slate-700 rounded max-w-4xl mx-auto">
-          <div className="grid grid-cols-3 items-center text-center divide-x divide-slate-300">
+        <div
+          className="mt-1 py-0.5 px-3 rounded max-w-4xl mx-auto"
+          style={{
+            backgroundColor: '#f8fafc',
+            border: '1px solid #475569',
+          }}
+        >
+          <div
+            className="grid grid-cols-3 items-center text-center divide-x"
+            style={{ borderColor: '#cbd5e1' }}
+          >
             {/* Danışman Öğretmen */}
             <div className="px-2">
-              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+              <div
+                className="text-[8px] font-bold uppercase tracking-wider"
+                style={{ color: '#64748b' }}
+              >
                 Danışman Öğretmen
               </div>
-              <div className="text-xs font-black text-slate-950 leading-tight">
+              <div
+                className="text-xs font-black leading-tight"
+                style={{ color: '#020617' }}
+              >
                 {consultantTeacherName}
               </div>
-              <div className="text-[8px] text-slate-600 font-semibold">
+              <div
+                className="text-[8px] font-semibold"
+                style={{ color: '#475569' }}
+              >
                 {teacher.branch}
               </div>
             </div>
 
             {/* Öğretim Yılı ve Sınıf Kademesi */}
             <div className="px-2">
-              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+              <div
+                className="text-[8px] font-bold uppercase tracking-wider"
+                style={{ color: '#64748b' }}
+              >
                 Öğretim Yılı / Kademe
               </div>
-              <div className="text-xs font-black text-slate-950 leading-tight">
+              <div
+                className="text-xs font-black leading-tight"
+                style={{ color: '#020617' }}
+              >
                 {classroom.academicYear}
               </div>
-              <div className="text-[8px] text-slate-700 font-semibold">
+              <div
+                className="text-[8px] font-semibold"
+                style={{ color: '#334155' }}
+              >
                 {classroom.grade} {classroom.branchName ? `• ${classroom.branchName}` : ''}
               </div>
             </div>
 
             {/* Sınıf Mevcudu & Tarih */}
             <div className="px-2">
-              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+              <div
+                className="text-[8px] font-bold uppercase tracking-wider"
+                style={{ color: '#64748b' }}
+              >
                 Mevcut / Kapasite
               </div>
-              <div className="text-xs font-black text-slate-950 leading-tight">
+              <div
+                className="text-xs font-black leading-tight"
+                style={{ color: '#020617' }}
+              >
                 {classroom.students.length} / {classroom.seats.length} Öğrenci
               </div>
-              <div className="text-[8px] text-slate-600 font-semibold">
+              <div
+                className="text-[8px] font-semibold"
+                style={{ color: '#475569' }}
+              >
                 Tarih: {new Date().toLocaleDateString('tr-TR')}
               </div>
             </div>
@@ -106,16 +160,45 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
       </div>
 
       {/* 2. Akıllı Tahta & Öğretmen Kürsüsü Ön Cephe Şeridi */}
-      <div className="grid grid-cols-12 gap-2 mb-1.5 items-center bg-slate-100 p-1 rounded border border-slate-400">
-        <div className="col-span-2 text-center text-[9px] font-black text-amber-950 bg-amber-100 py-0.5 rounded border border-amber-300">
+      <div
+        className="grid grid-cols-12 gap-2 mb-1.5 items-center p-1 rounded"
+        style={{
+          backgroundColor: '#f1f5f9',
+          border: '1px solid #94a3b8',
+        }}
+      >
+        <div
+          className="col-span-2 text-center text-[9px] font-black py-0.5 rounded"
+          style={{
+            backgroundColor: '#fef3c7',
+            color: '#451a03',
+            border: '1px solid #fcd34d',
+          }}
+        >
           🚪 GİRİŞ KAPISI
         </div>
-        <div className="col-span-8 bg-slate-900 text-white text-center py-0.5 rounded shadow-xs border border-slate-800">
-          <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-black">
+        <div
+          className="col-span-8 text-center py-0.5 rounded shadow-xs"
+          style={{
+            backgroundColor: '#0f172a',
+            border: '1px solid #1e293b',
+          }}
+        >
+          <div
+            className="text-[10px] uppercase tracking-wider font-black"
+            style={{ color: '#34d399' }}
+          >
             ÖĞRETMEN KÜRSÜSÜ / AKILLI TAHTA (ÖN CEPHE)
           </div>
         </div>
-        <div className="col-span-2 text-center text-[9px] font-black text-sky-950 bg-sky-100 py-0.5 rounded border border-sky-300">
+        <div
+          className="col-span-2 text-center text-[9px] font-black py-0.5 rounded"
+          style={{
+            backgroundColor: '#e0f2fe',
+            color: '#0c4a6e',
+            border: '1px solid #7dd3fc',
+          }}
+        >
           🪟 CAMLAR (DIŞ CEPHE)
         </div>
       </div>
@@ -125,12 +208,22 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
         {blocks.map((block) => (
           <div
             key={block.key}
-            className={`border-2 ${block.border} rounded-lg p-1.5 bg-slate-50/70 flex flex-col justify-between`}
-            style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
+            className="rounded-lg p-1.5 flex flex-col justify-between"
+            style={{
+              backgroundColor: '#fafafa',
+              border: `2px solid ${block.borderColor}`,
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }}
           >
             {/* Blok Başlığı */}
             <div
-              className={`text-center font-black text-[10px] uppercase tracking-wider py-0.5 px-1 rounded mb-1 border border-slate-300 ${block.headerBg}`}
+              className="text-center font-black text-[10px] uppercase tracking-wider py-0.5 px-1 rounded mb-1"
+              style={{
+                backgroundColor: block.headerBg,
+                color: block.headerColor,
+                border: '1px solid #cbd5e1',
+              }}
             >
               {block.icon} {block.name}
             </div>
@@ -139,7 +232,10 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
             <div className="space-y-1">
               {[1, 2, 3, 4].map((row) => (
                 <div key={row} className="space-y-0.5">
-                  <div className="flex justify-between items-center text-[9px] text-slate-600 px-0.5 font-bold">
+                  <div
+                    className="flex justify-between items-center text-[9px] px-0.5 font-bold"
+                    style={{ color: '#475569' }}
+                  >
                     <span>{row}. Sıra</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1">
@@ -155,33 +251,54 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
                       return (
                         <div
                           key={col}
-                          className={`p-1 rounded text-left min-h-[46px] max-h-[50px] flex flex-col justify-between border-2 ${
-                            student
+                          className="p-1 rounded text-left min-h-[46px] max-h-[50px] flex flex-col justify-between"
+                          style={{
+                            backgroundColor: student
                               ? isGirl
-                                ? 'bg-rose-50 border-rose-400 text-rose-950'
-                                : 'bg-white border-slate-800 text-slate-950'
-                              : 'bg-slate-50 border-dashed border-slate-300 text-slate-400'
-                          }`}
+                                ? '#fff1f2'
+                                : '#ffffff'
+                              : '#f8fafc',
+                            border: student
+                              ? isGirl
+                                ? '2px solid #fb7185'
+                                : '2px solid #0f172a'
+                              : '1px dashed #cbd5e1',
+                            color: student
+                              ? isGirl
+                                ? '#4c0519'
+                                : '#020617'
+                              : '#94a3b8',
+                          }}
                         >
                           {/* Sıra Üst Alanı: No ve Cinsiyet */}
                           <div className="flex justify-between items-center text-[8px] leading-none">
                             {student ? (
                               <>
-                                <span className="font-mono font-black text-[9px] text-slate-900 bg-slate-200 px-1 py-0.2 rounded border border-slate-300">
+                                <span
+                                  className="font-mono font-black text-[9px] px-1 py-0.2 rounded"
+                                  style={{
+                                    backgroundColor: '#e2e8f0',
+                                    color: '#0f172a',
+                                    border: '1px solid #cbd5e1',
+                                  }}
+                                >
                                   #{student.studentNumber}
                                 </span>
                                 <span
-                                  className={`text-[8px] font-black px-1 py-0.2 rounded ${
-                                    isGirl
-                                      ? 'bg-rose-200 text-rose-900'
-                                      : 'bg-blue-100 text-blue-900'
-                                  }`}
+                                  className="text-[8px] font-black px-1 py-0.2 rounded"
+                                  style={{
+                                    backgroundColor: isGirl ? '#fecdd3' : '#dbeafe',
+                                    color: isGirl ? '#881337' : '#1e3a8a',
+                                  }}
                                 >
                                   {isGirl ? 'Kız' : 'Erk'}
                                 </span>
                               </>
                             ) : (
-                              <span className="text-[8px] font-bold text-slate-400">
+                              <span
+                                className="text-[8px] font-bold"
+                                style={{ color: '#94a3b8' }}
+                              >
                                 #{col}
                               </span>
                             )}
@@ -191,15 +308,19 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
                           <div className="mt-0.5">
                             {student ? (
                               <div
-                                className={`font-black text-[10px] leading-tight tracking-tight uppercase line-clamp-1 ${
-                                  isGirl ? 'text-rose-950' : 'text-slate-950'
-                                }`}
+                                className="font-black text-[10px] leading-tight tracking-tight uppercase line-clamp-1"
+                                style={{
+                                  color: isGirl ? '#4c0519' : '#020617',
+                                }}
                                 title={student.fullName}
                               >
                                 {student.fullName}
                               </div>
                             ) : (
-                              <div className="text-[9px] font-bold italic text-slate-400 text-center py-0.5">
+                              <div
+                                className="text-[9px] font-bold italic text-center py-0.5"
+                                style={{ color: '#94a3b8' }}
+                              >
                                 Boş Sıra
                               </div>
                             )}
@@ -216,16 +337,52 @@ export const PrintSeatingPlan: React.FC<PrintSeatingPlanProps> = ({ classroom, t
       </div>
 
       {/* 4. Resmi İmza ve Onay Alanı (Kompakt Tek Sayfa) */}
-      <div className="mt-2 pt-1.5 border-t-2 border-slate-900 grid grid-cols-2 text-center text-[9px] text-slate-700">
+      <div
+        className="mt-2 pt-1.5 grid grid-cols-2 text-center text-[9px]"
+        style={{
+          borderTop: '2px solid #0f172a',
+          color: '#334155',
+        }}
+      >
         <div>
-          <div className="font-black text-[11px] text-slate-950">{consultantTeacherName}</div>
-          <div className="text-[9px] font-semibold text-slate-600">{teacher.branch} / Danışman Öğretmen</div>
-          <div className="mt-2 text-[8px] text-slate-500 font-medium">İmza: .......................................</div>
+          <div
+            className="font-black text-[11px]"
+            style={{ color: '#020617' }}
+          >
+            {consultantTeacherName}
+          </div>
+          <div
+            className="text-[9px] font-semibold"
+            style={{ color: '#475569' }}
+          >
+            {teacher.branch} / Danışman Öğretmen
+          </div>
+          <div
+            className="mt-2 text-[8px] font-medium"
+            style={{ color: '#64748b' }}
+          >
+            İmza: .......................................
+          </div>
         </div>
         <div>
-          <div className="font-black text-[11px] text-slate-950">Okul Müdürü</div>
-          <div className="text-[9px] font-semibold text-slate-600">Okul Müdürlüğü</div>
-          <div className="mt-2 text-[8px] text-slate-500 font-medium">Mühür / İmza: .......................................</div>
+          <div
+            className="font-black text-[11px]"
+            style={{ color: '#020617' }}
+          >
+            Okul Müdürü
+          </div>
+          <div
+            className="text-[9px] font-semibold"
+            style={{ color: '#475569' }}
+          >
+            Okul Müdürlüğü
+          </div>
+          <div
+            className="mt-2 text-[8px] font-medium"
+            style={{ color: '#64748b' }}
+          >
+            Mühür / İmza: .......................................
+          </div>
         </div>
       </div>
     </div>
