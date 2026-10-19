@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Classroom, Student, SeatSlot } from '../types';
 import { StudentDeskCard } from './StudentDeskCard';
 import { Layers, ArrowLeftRight, X } from 'lucide-react';
@@ -26,6 +26,21 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
     seatId: string;
     studentId: string | null;
     studentName: string;
+  } | null>(null);
+
+  // Active hover target during mobile touch drag
+  const [touchHoverSeatId, setTouchHoverSeatId] = useState<string | null>(null);
+
+  // Touch drag state for unassigned students
+  const [unseatedTouchPreview, setUnseatedTouchPreview] = useState<{
+    student: Student;
+    coords: { x: number; y: number };
+  } | null>(null);
+  const unseatedTouchRef = useRef<{
+    student: Student;
+    startX: number;
+    startY: number;
+    time: number;
   } | null>(null);
 
   // Extract blocks dynamically
@@ -92,7 +107,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
     }
   };
 
-  // Handle click on an unassigned student
+  // Handle click on an unassigned student (Tap-to-Swap)
   const handleUnseatedClick = (st: Student) => {
     if (readOnlyActive) return;
 
@@ -111,8 +126,86 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
     }
   };
 
+  // Touch drag handlers for unassigned students
+  const handleUnseatedTouchStart = (e: React.TouchEvent, st: Student) => {
+    if (readOnlyActive) return;
+    const touch = e.touches[0];
+    unseatedTouchRef.current = {
+      student: st,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      time: Date.now(),
+    };
+  };
+
+  const handleUnseatedTouchMove = (e: React.TouchEvent) => {
+    if (!unseatedTouchRef.current || readOnlyActive) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - unseatedTouchRef.current.startX;
+    const dy = touch.clientY - unseatedTouchRef.current.startY;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist > 10) {
+      if (e.cancelable) e.preventDefault();
+      setUnseatedTouchPreview({
+        student: unseatedTouchRef.current.student,
+        coords: { x: touch.clientX, y: touch.clientY },
+      });
+
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetDesk = el?.closest('[data-seat-id]') as HTMLElement;
+      const targetSeatId = targetDesk?.getAttribute('data-seat-id') || null;
+      setTouchHoverSeatId(targetSeatId);
+    }
+  };
+
+  const handleUnseatedTouchEnd = (e: React.TouchEvent) => {
+    if (!unseatedTouchRef.current) return;
+
+    if (unseatedTouchPreview) {
+      const lastTouch = e.changedTouches[0];
+      const el = document.elementFromPoint(lastTouch.clientX, lastTouch.clientY);
+      const targetDesk = el?.closest('[data-seat-id]') as HTMLElement;
+      const targetSeatId = targetDesk?.getAttribute('data-seat-id');
+
+      if (targetSeatId) {
+        onSwapSeats(`unassigned:${unseatedTouchRef.current.student.id}`, targetSeatId);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(60);
+        }
+      }
+      setUnseatedTouchPreview(null);
+      setTouchHoverSeatId(null);
+    } else {
+      // Tap
+      const dt = Date.now() - unseatedTouchRef.current.time;
+      if (dt < 500) {
+        handleUnseatedClick(unseatedTouchRef.current.student);
+      }
+    }
+
+    unseatedTouchRef.current = null;
+  };
+
   return (
     <div key={classroom.id} className="w-full space-y-3 relative">
+      {/* FLOATING TOUCH DRAG GHOST FOR UNASSIGNED STUDENTS */}
+      {unseatedTouchPreview && (
+        <div
+          className="touch-drag-preview px-3 py-2 rounded-2xl bg-amber-900/95 text-white font-bold text-xs shadow-2xl border-2 border-amber-400 flex items-center gap-2"
+          style={{
+            left: `${unseatedTouchPreview.coords.x}px`,
+            top: `${unseatedTouchPreview.coords.y - 45}px`,
+          }}
+        >
+          <span className="font-mono bg-amber-500 text-white px-1.5 py-0.5 rounded text-[10px]">
+            #{unseatedTouchPreview.student.studentNumber}
+          </span>
+          <span className="truncate max-w-[140px]">{unseatedTouchPreview.student.fullName}</span>
+          <ArrowLeftRight className="w-3 h-3 text-emerald-400 animate-pulse" />
+        </div>
+      )}
+
       {/* 3 Main Desks Blocks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 relative">
         {uniqueBlockKeys.map((blockKey, blockIndex) => {
@@ -142,21 +235,19 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                     </h3>
                   </div>
                 </div>
-
-                <span className="text-[10px] font-mono font-bold bg-white/90 px-2 py-0.5 rounded-full text-slate-600 border border-slate-200 shadow-2xs">
-                  Blok {blockIndex + 1}
+                <span className="text-[10px] font-bold text-slate-700 bg-white/80 px-2 py-0.5 rounded-full border border-slate-200/60 shadow-2xs">
+                  {blockSeats.filter((s) => s.studentId).length} / {blockSeats.length} Dolu
                 </span>
               </div>
 
-              {/* Rows within this block: compact row spacing */}
+              {/* Rows inside Block */}
               <div className="space-y-2">
                 {rows.map((rowNum) => {
-                  const rowSeats = blockSeats
-                    .filter((s) => s.row === rowNum)
-                    .sort((a, b) => a.col - b.col);
+                  const rowSeats = blockSeats.filter((s) => s.row === rowNum);
+                  if (rowSeats.length === 0) return null;
 
                   return (
-                    <div key={rowNum} className="relative">
+                    <div key={rowNum} className="space-y-0.5">
                       {/* Row Label Indicator */}
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium mb-1 px-0.5">
                         <span className="font-medium text-slate-500">{rowNum}. Sıra</span>
@@ -187,6 +278,8 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                               isSelectedForSwap={isSelected}
                               hasActiveSelection={!!selectedSeatForSwap}
                               onCardClick={() => handleCardClick(seat, student)}
+                              isTouchTargetHovered={touchHoverSeatId === seat.id}
+                              onTouchHoverChange={setTouchHoverSeatId}
                             />
                           );
                         })}
@@ -215,7 +308,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                 <p className="text-[10px] text-amber-800">
                   {readOnlyActive
                     ? 'Bu sınıfa kayıtlı olup henüz sıraya atanmamış öğrenciler'
-                    : 'Dokunarak veya sürükleyerek boş sıralara yerleştirebilirsiniz.'}
+                    : 'Dokunarak veya parmağınızla sürükleyerek boş sıralara yerleştirebilirsiniz.'}
                 </p>
               </div>
             </div>
@@ -229,6 +322,9 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                   key={st.id}
                   draggable={!readOnlyActive}
                   onClick={() => handleUnseatedClick(st)}
+                  onTouchStart={(e) => handleUnseatedTouchStart(e, st)}
+                  onTouchMove={handleUnseatedTouchMove}
+                  onTouchEnd={handleUnseatedTouchEnd}
                   onDragStart={(e) => {
                     if (readOnlyActive) return;
                     e.dataTransfer.setData(
@@ -239,7 +335,10 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                       })
                     );
                   }}
-                  className={`border px-2.5 py-1.5 rounded-xl shadow-2xs hover:shadow-xs flex items-center gap-1.5 transition-all duration-200 ease-in-out ${
+                  style={{
+                    touchAction: !readOnlyActive ? 'none' : 'auto',
+                  }}
+                  className={`border px-2.5 py-1.5 rounded-xl shadow-2xs hover:shadow-xs flex items-center gap-1.5 transition-all duration-200 ease-in-out select-none ${
                     isSelected
                       ? 'bg-blue-100 border-blue-500 ring-2 ring-blue-500 scale-105 shadow-md'
                       : 'bg-white/95 border-amber-300/80'

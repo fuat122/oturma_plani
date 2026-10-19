@@ -14,6 +14,7 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Lock,
+  RefreshCw,
 } from 'lucide-react';
 
 interface ClassroomHeaderProps {
@@ -105,30 +106,36 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             </button>
           )}
 
-          {/* PDF İNDİR */}
+          {/* PDF İNDİR (Arka planda çalışır, butonlar kilitlenmez) */}
           <button
             type="button"
             onClick={onExportPDF}
-            disabled={isExportingPDF}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
             title="A4 Yatay formatında Oturma Planı PDF'i indir"
           >
-            <FileText className="w-4 h-4 text-emerald-400" />
+            {isExportingPDF ? (
+              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4 text-emerald-400" />
+            )}
             <span className="hidden sm:inline">
-              {isExportingPDF ? 'Hazırlanıyor...' : 'PDF İndir'}
+              {isExportingPDF ? 'İndiriliyor...' : 'PDF İndir'}
             </span>
             <Download className="w-3.5 h-3.5 text-slate-400 sm:hidden" />
           </button>
 
-          {/* EXCEL (.XLSX) İNDİR */}
+          {/* EXCEL (.XLSX) İNDİR (Arka planda çalışır, butonlar kilitlenmez) */}
           <button
             type="button"
             onClick={onExportExcel}
-            disabled={isExportingExcel}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
             title="Oturma Planı ve Öğrenci Listesini Excel (.xlsx) olarak indir"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+            {isExportingExcel ? (
+              <RefreshCw className="w-4 h-4 text-emerald-100 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+            )}
             <span className="hidden sm:inline">
               {isExportingExcel ? 'Hazırlanıyor...' : 'Excel (.xlsx)'}
             </span>

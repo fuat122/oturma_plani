@@ -24,26 +24,69 @@
   animation: pulseSubtle 3s ease-in-out infinite;
 }
 
+/* TOUCH DRAG GHOST */
+.touch-drag-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: transform 0.05s ease-out;
+}
+
+/* STRICT SINGLE-PAGE A4 LANDSCAPE PRINT RULES */
 @media print {
   @page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 5mm;
   }
-  body {
+
+  /* Hide everything on screen except the dedicated print seating chart container */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
     background-color: #ffffff !important;
-    color: #0f172a !important;
+    color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    overflow: visible !important;
+    height: auto !important;
   }
-  .no-print {
+
+  body > #root > div > *:not(#pdf-export-container) {
     display: none !important;
   }
+
+  header, nav, main, footer, .no-print, [role="dialog"], [role="status"] {
+    display: none !important;
+  }
+
   #pdf-export-container {
+    display: block !important;
     position: static !important;
     left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
-    display: block !important;
+    max-width: 100% !important;
+    max-height: 198mm !important;
     background: #ffffff !important;
     visibility: visible !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+  }
+
+  #printable-seating-chart {
+    display: block !important;
+    width: 100% !important;
+    max-height: 194mm !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
   }
 }

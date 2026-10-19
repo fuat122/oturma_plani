@@ -903,13 +903,14 @@ export default function App() {
     });
   };
 
-  // PDF İNDİR (Visual Seating Plan PDF)
+  // PDF İNDİR (Visual Seating Plan PDF - Arka Planda Tek Sayfa)
   const handleExportPDF = async () => {
     if (!currentClassroom) return;
     setIsExportingPDF(true);
+    showToast('Oturma planı PDF dosyası arka planda hazırlanıyor...', 'info');
     try {
       await exportSeatingPlanToPDF('printable-seating-chart', currentClassroom, activeTeacher);
-      showToast('Oturma planı PDF dosyası başarıyla indirildi.', 'success');
+      showToast('Oturma planı PDF dosyası tek sayfa olarak başarıyla indirildi.', 'success');
     } catch (err: any) {
       showToast(`PDF oluşturma hatası: ${err?.message || 'Bilinmeyen hata'}`, 'warning');
     } finally {
