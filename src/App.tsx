@@ -408,12 +408,12 @@ export default function App() {
     [isCurrentClassReadOnly, isGoogleConnected, googleUser, activeTeacher.name, showToast]
   );
 
-  // SWAP SEATS LOGIC (HTML5 Drag & Drop)
+  // SWAP SEATS LOGIC (Drag & Drop + Mobile Tap-to-Swap)
   const handleSwapSeats = useCallback(
     (sourceSeatId: string, targetSeatId: string) => {
       if (!currentClassroom || isCurrentClassReadOnly) {
         if (isCurrentClassReadOnly) {
-          showToast('Salt Okunur modda sıra yerleri değiştirilemez.', 'warning');
+          showToast('Bu sınıfta sıra yerleri değiştirilemez.', 'warning');
         }
         return;
       }
@@ -421,10 +421,46 @@ export default function App() {
       const newSeats = currentClassroom.seats.map((seat) => ({ ...seat }));
       const newStudents = currentClassroom.students.map((st) => ({ ...st }));
 
-      const sourceSeat = newSeats.find((s) => s.id === sourceSeatId);
       const targetSeat = newSeats.find((s) => s.id === targetSeatId);
+      if (!targetSeat) return;
 
-      if (!sourceSeat || !targetSeat) return;
+      // Case A: Placing an unassigned student onto a seat
+      if (sourceSeatId.startsWith('unassigned')) {
+        const studentId = sourceSeatId.includes(':')
+          ? sourceSeatId.split(':')[1]
+          : null;
+
+        if (studentId) {
+          const oldOccupantId = targetSeat.studentId;
+          targetSeat.studentId = studentId;
+
+          const st = newStudents.find((s) => s.id === studentId);
+          if (st) st.seatCode = targetSeat.code;
+
+          if (oldOccupantId && oldOccupantId !== studentId) {
+            const oldSt = newStudents.find((s) => s.id === oldOccupantId);
+            if (oldSt) oldSt.seatCode = undefined;
+          }
+
+          const updatedClass: Classroom = {
+            ...currentClassroom,
+            seats: newSeats,
+            students: newStudents,
+            syncStatus: 'synced',
+            lastSyncedAt: new Date().toISOString(),
+          };
+
+          persistClassroomChange(updatedClass);
+          if (st) {
+            showToast(`${st.fullName} sıraya yerleştirildi.`, 'success');
+          }
+        }
+        return;
+      }
+
+      // Case B: Swapping two seats
+      const sourceSeat = newSeats.find((s) => s.id === sourceSeatId);
+      if (!sourceSeat) return;
 
       const sourceStudentId = sourceSeat.studentId;
       const targetStudentId = targetSeat.studentId;
@@ -456,9 +492,11 @@ export default function App() {
       const sName = currentClassroom.students.find((s) => s.id === sourceStudentId)?.fullName;
       const tName = currentClassroom.students.find((s) => s.id === targetStudentId)?.fullName;
       if (sName && tName) {
-        showToast(`${sName} ile ${tName} yer değiştirdi. Firestore güncellendi.`, 'success');
+        showToast(`${sName} ile ${tName} yer değiştirdi.`, 'success');
       } else if (sName) {
-        showToast(`${sName} ${targetSeat.code} numaralı sıraya taşındı.`, 'info');
+        showToast(`${sName} yeni sırasına taşındı.`, 'info');
+      } else if (tName) {
+        showToast(`${tName} yeni sırasına taşındı.`, 'info');
       }
     },
     [currentClassroom, isCurrentClassReadOnly, persistClassroomChange, showToast]
@@ -1071,7 +1109,7 @@ export default function App() {
       {/* DEDICATED PRINT & PDF CONTAINER (STRICTLY THE VISUAL SEATING PLAN) */}
       <div
         id="pdf-export-container"
-        className="fixed -left-[9999px] top-0 w-[1080px] pointer-events-none bg-white z-[-99] print:static print:left-0 print:w-full print:pointer-events-auto print:z-auto print:block"
+        className="fixed -left-[9999px] top-0 w-[1100px] pointer-events-none bg-white z-[-99] print:static print:left-0 print:w-full print:pointer-events-auto print:z-auto print:block"
         aria-hidden="true"
       >
         {currentClassroom && (

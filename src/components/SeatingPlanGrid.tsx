@@ -1,7 +1,7 @@
-import React from 'react';
-import { Classroom, Student } from '../types';
+import React, { useState } from 'react';
+import { Classroom, Student, SeatSlot } from '../types';
 import { StudentDeskCard } from './StudentDeskCard';
-import { Layers } from 'lucide-react';
+import { Layers, ArrowLeftRight, X } from 'lucide-react';
 
 interface SeatingPlanGridProps {
   classroom: Classroom;
@@ -20,6 +20,13 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
   isReadOnly = false,
 }) => {
   const readOnlyActive = isReadOnly || !!classroom.isReadOnly;
+
+  // Selected seat or unassigned student for mobile/touch Tap-to-Swap
+  const [selectedSeatForSwap, setSelectedSeatForSwap] = useState<{
+    seatId: string;
+    studentId: string | null;
+    studentName: string;
+  } | null>(null);
 
   // Extract blocks dynamically
   const uniqueBlockKeys = Array.from(new Set(classroom.seats.map((s) => s.block)));
@@ -51,8 +58,61 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
   );
   const unseatedStudents = classroom.students.filter((st) => !seatedStudentIds.has(st.id));
 
+  // Handle click on a desk card (Mobile & Desktop Tap-to-Swap)
+  const handleCardClick = (seat: SeatSlot, student: Student | null) => {
+    if (readOnlyActive) return;
+
+    // 1. If no seat is currently selected:
+    if (!selectedSeatForSwap) {
+      if (student) {
+        setSelectedSeatForSwap({
+          seatId: seat.id,
+          studentId: student.id,
+          studentName: student.fullName,
+        });
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(40);
+        }
+      }
+      return;
+    }
+
+    // 2. A seat is already selected:
+    if (selectedSeatForSwap.seatId === seat.id) {
+      // Tapping the same seat cancels selection
+      setSelectedSeatForSwap(null);
+      return;
+    }
+
+    // Tapping ANY other seat (empty or occupied) swaps/moves immediately!
+    onSwapSeats(selectedSeatForSwap.seatId, seat.id);
+    setSelectedSeatForSwap(null);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(60);
+    }
+  };
+
+  // Handle click on an unassigned student
+  const handleUnseatedClick = (st: Student) => {
+    if (readOnlyActive) return;
+
+    if (selectedSeatForSwap?.seatId === `unassigned:${st.id}`) {
+      setSelectedSeatForSwap(null);
+      return;
+    }
+
+    setSelectedSeatForSwap({
+      seatId: `unassigned:${st.id}`,
+      studentId: st.id,
+      studentName: st.fullName,
+    });
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(40);
+    }
+  };
+
   return (
-    <div key={classroom.id} className="w-full space-y-3">
+    <div key={classroom.id} className="w-full space-y-3 relative">
       {/* 3 Main Desks Blocks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 relative">
         {uniqueBlockKeys.map((blockKey, blockIndex) => {
@@ -111,6 +171,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
 
                           // Stagger entrance animation across the entire classroom in an organic wave
                           const staggerIndex = blockIndex * 8 + (rowNum - 1) * 2 + seatIndex;
+                          const isSelected = selectedSeatForSwap?.seatId === seat.id;
 
                           return (
                             <StudentDeskCard
@@ -123,6 +184,9 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                               onRemoveStudentFromSeat={onRemoveStudentFromSeat}
                               isReadOnly={readOnlyActive}
                               staggerIndex={staggerIndex}
+                              isSelectedForSwap={isSelected}
+                              hasActiveSelection={!!selectedSeatForSwap}
+                              onCardClick={() => handleCardClick(seat, student)}
                             />
                           );
                         })}
@@ -151,51 +215,89 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
                 <p className="text-[10px] text-amber-800">
                   {readOnlyActive
                     ? 'Bu sınıfa kayıtlı olup henüz sıraya atanmamış öğrenciler'
-                    : 'Bu öğrencileri yukarıdaki boş sıralara sürükleyerek atayabilirsiniz.'}
+                    : 'Dokunarak veya sürükleyerek boş sıralara yerleştirebilirsiniz.'}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
-            {unseatedStudents.map((st) => (
-              <div
-                key={st.id}
-                draggable={!readOnlyActive}
-                onDragStart={(e) => {
-                  if (readOnlyActive) return;
-                  e.dataTransfer.setData(
-                    'application/json',
-                    JSON.stringify({
-                      sourceSeatId: 'unassigned',
-                      studentId: st.id,
-                    })
-                  );
-                }}
-                className={`bg-white/95 border border-amber-300/80 px-2.5 py-1.5 rounded-xl shadow-2xs hover:shadow-xs flex items-center gap-1.5 transition-all duration-200 ease-in-out ${
-                  readOnlyActive
-                    ? 'cursor-default'
-                    : 'cursor-grab active:cursor-grabbing hover:border-amber-500 hover:-translate-y-0.5 active:scale-[0.98]'
-                }`}
-              >
-                <span className="font-mono text-xs font-bold text-amber-900">
-                  #{st.studentNumber}
-                </span>
-                <span className="text-xs font-semibold text-slate-800">
-                  {st.fullName}
-                </span>
-                <span
-                  className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs ${
-                    st.gender === 'K'
-                      ? 'bg-rose-100 text-rose-800 border-rose-200'
-                      : 'bg-blue-100 text-blue-800 border-blue-200'
+            {unseatedStudents.map((st) => {
+              const isSelected = selectedSeatForSwap?.seatId === `unassigned:${st.id}`;
+              return (
+                <div
+                  key={st.id}
+                  draggable={!readOnlyActive}
+                  onClick={() => handleUnseatedClick(st)}
+                  onDragStart={(e) => {
+                    if (readOnlyActive) return;
+                    e.dataTransfer.setData(
+                      'application/json',
+                      JSON.stringify({
+                        sourceSeatId: `unassigned:${st.id}`,
+                        studentId: st.id,
+                      })
+                    );
+                  }}
+                  className={`border px-2.5 py-1.5 rounded-xl shadow-2xs hover:shadow-xs flex items-center gap-1.5 transition-all duration-200 ease-in-out ${
+                    isSelected
+                      ? 'bg-blue-100 border-blue-500 ring-2 ring-blue-500 scale-105 shadow-md'
+                      : 'bg-white/95 border-amber-300/80'
+                  } ${
+                    readOnlyActive
+                      ? 'cursor-default'
+                      : 'cursor-pointer hover:border-amber-500 hover:-translate-y-0.5 active:scale-[0.98]'
                   }`}
+                  title="Dokunarak veya sürükleyerek bir sıraya yerleştirin"
                 >
-                  {st.gender === 'K' ? 'Kız' : 'Erkek'}
-                </span>
-              </div>
-            ))}
+                  <span className="font-mono text-xs font-bold text-amber-900">
+                    #{st.studentNumber}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-800">
+                    {st.fullName}
+                  </span>
+                  <span
+                    className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs ${
+                      st.gender === 'K'
+                        ? 'bg-rose-100 text-rose-800 border-rose-200'
+                        : 'bg-blue-100 text-blue-800 border-blue-200'
+                    }`}
+                  >
+                    {st.gender === 'K' ? 'Kız' : 'Erkek'}
+                  </span>
+                  {!readOnlyActive && (
+                    <span className="text-[9px] text-blue-600 font-bold ml-0.5">
+                      {isSelected ? '✓ Seçildi' : 'Taşı'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
+      )}
+
+      {/* FLOATING ACTION HELPER FOR MOBILE TAP-TO-SWAP */}
+      {selectedSeatForSwap && !readOnlyActive && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] sm:w-auto bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-blue-500/60 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="relative flex h-3 w-3 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+            </span>
+            <div className="text-xs truncate">
+              <strong className="text-blue-300 font-black">{selectedSeatForSwap.studentName}</strong> seçildi.
+              <span className="text-slate-300"> Hedef sıraya dokunun.</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedSeatForSwap(null)}
+            className="shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-600 transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>İptal</span>
+          </button>
         </div>
       )}
     </div>
