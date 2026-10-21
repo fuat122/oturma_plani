@@ -206,8 +206,20 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
         </div>
       )}
 
-      {/* 3 Main Desks Blocks */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 relative">
+      {/* Mobile Horizontal Scroll Hint */}
+      <div className="flex lg:hidden items-center justify-between px-3 py-2 mb-2.5 bg-blue-50/90 border border-blue-200/90 rounded-2xl text-[11px] text-blue-900 font-medium shadow-2xs">
+        <span className="flex items-center gap-1.5">
+          <span>↔️</span>
+          <span>Sıralar arasında parmağınızla yatay kaydırabilirsiniz</span>
+        </span>
+        <span className="text-[10px] bg-blue-200/90 text-blue-950 font-bold px-2 py-0.5 rounded-full shrink-0">
+          3 Blok
+        </span>
+      </div>
+
+      {/* 3 Main Desks Blocks with Horizontal Pan Support on Mobile */}
+      <div className="overflow-x-auto touch-pan-x pb-4 -mx-2 px-2 sm:mx-0 sm:px-0">
+        <div className="min-w-[860px] lg:min-w-0 grid grid-cols-3 gap-3.5 relative">
         {uniqueBlockKeys.map((blockKey, blockIndex) => {
           const meta = blockMetadata[blockKey] || {
             name: `${blockKey.toUpperCase()} Bloku`,
@@ -291,6 +303,7 @@ export const SeatingPlanGrid: React.FC<SeatingPlanGridProps> = ({
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Unassigned Students Dock (if any) */}

@@ -1,0 +1,71 @@
+# PRD (Product Requirements Document)
+## Akıllı Sınıf - Oturma Planı & Öğrenci Takip Sistemi
+
+### 1. Ürün Özeti & Vizyon
+**Akıllı Sınıf**, K-12 kademesinde görev yapan danışman ve branş öğretmenlerinin sınıf oturma düzenlerini 3 boyutlu/bloklu sınıf mimarisine uygun şekilde görselleştirmelerini, öğrencilerin yerlerini hem masaüstü hem de mobil dokunmatik cihazlarda akıcı bir biçimde yönetmelerini, tarih bazlı pedagojik gözlemlerini kayıt altına almalarını ve tek tıkla resmi A4 yatay PDF ve Excel çıktıları almalarını sağlayan yeni nesil bir okul yönetim platformudur.
+
+---
+
+### 2. Kullanıcı Profilleri & Roller
+1. **Danışman / Şube Öğretmeni:**
+   - Kendi sınıfının (örn. 9-A, 10-B) oturma planını oluşturur, düzenler, sıraları rastgele karıştırır veya numaraya göre sıralar.
+   - Öğrencilerin sıralarını dokunarak (Tap-to-Swap) veya dokunmatik sürükleyerek (Touch Drag & Drop) değiştirir.
+   - Öğrenci bazında tarihli ve kategorize edilmiş pedagojik gözlem ve notlar ekler.
+   - Resmi A4 Yatay oturma planı PDF'i ve detaylı Excel (.xlsx) raporları indirir.
+2. **Diğer Yetkili Branş Öğretmenleri (Okul İçi Paylaşım):**
+   - Okuldaki diğer öğretmenlerin sınıflarını "Diğer Sınıflar" sekmesinden görüntüler.
+   - Kişisel öğrenci gözlemleri ve notları gizlenir; yalnızca öğrenci adı, numarası ve sıra yerleşimi salt okunur olarak incelenebilir.
+3. **Okul İdaresi:**
+   - Standart formatlı, danışman öğretmen ve okul müdürü imza/mühür alanlarına sahip resmi oturma planı çıktılarını temin eder.
+
+---
+
+### 3. Temel Fonksiyonel Gereksinimler
+
+#### 3.1. Kimlik Doğrulama & Kurumsal Güvenlik
+- **Google OAuth Girişi:** Firebase Auth altyapısı ile tek tıkla güvenli giriş.
+- **Kurumsal Okul Domain Kontrolü:**
+  - Yalnızca `@okul.k12.tr`, `*.k12.tr`, `*.edu.tr` uzantılı kurumsal okul e-posta adresleri veya yetkili sistem yöneticisi (`fuattosun@gmail.com`) kabul edilir.
+  - Yetkisiz bir e-posta ile giriş yapılırsa oturum derhal kapatılır (`await logout()`) ve kullanıcıya açıklayıcı güvenlik uyarısı gösterilir.
+  - Giriş ekranında ve öğretmen panellerinde: `"ℹ️ Sadece kurumsal okul e-posta adresleri kabul edilmektedir."` bilgisi açıkça yer alır.
+- **Sıkı Veri İzolasyonu (Multi-Tenancy):**
+  - Her öğretmenin sınıfları Firestore'da `teachers/{teacherId}/classes/{classId}` altında saklanır.
+  - Oturum kapalıyken hiçbir öğrenci veya sınıf verisi bellekte tutulmaz.
+
+#### 3.2. Sınıf & Başlık Standartları
+- **Dinamik Başlık Formatı:** Sınıf başlıkları hem ana ekranda hem de PDF dökümanında tam olarak şu prestijli formatta oluşturulur:
+  `"[Danışman Öğretmen Adı] Danışmanlığında [Sınıf Adı] Sınıfı"`
+  *(Örnek: "Altan AKA Danışmanlığında 9-A Sınıfı")*
+- **"Salt Okunur" İfadelerinin Temizliği:** Arayüzde hiçbir yerde "Salt Okunur" ifadesi veya kilit rozeti yer almaz; diğer sınıflar "Diğer Sınıflar" sekmesinde temiz bir arayüzle sunulur.
+
+#### 3.3. 3 Bloklu Oturma Düzeni & Çift Yöntemli Taşıma
+- **Gerçekçi Sınıf Mimarisi:**
+  - Ön Cephe: Giriş Kapısı, Akıllı Tahta (Öğretmen Kürsüsü), Camlar.
+  - 3 Blok: Duvar Kenarı Sıraları (Amber), Orta Blok Sıraları (Zümrüt Yeşili), Cam Kenarı Sıraları (Gök Mavisi).
+  - Her sırada yan yana 2 koltuk/sıra standardı.
+- **Çift Yöntemli Öğrenci Yer Değiştirme (Mobile & Desktop):**
+  1. **Dokunmatik Sürükle-Bırak (Touch & HTML5 Drag & Drop):** Parmağı veya fareyi basılı tutarak hedef sıraya taşıma. Taşınan kartın üzerinde uçan önizleme (ghost) ve hedef sırada yeşil onay halkası gösterilir.
+  2. **Dokunarak Değiştir (Tap-to-Swap):** İlk öğrenciye dokunulur (kart etrafında mavi seçim halkası belirir), ardından hedef sıraya dokunulduğunda öğrenciler anında yer değiştirir.
+
+#### 3.4. Tek Sayfa A4 Yatay PDF Baskı Motoru (Native Canvas 2D)
+- Tailwind CSS v4 `oklch()` renk fonksiyonundan kaynaklanan canvas çökmesini tamamen önleyen, dış CSS ayrıştırıcılarından bağımsız yerel Canvas 2D çizim motoru.
+- Standart 300 DPI (2480x1754 px) yüksek çözünürlük.
+- Kesinlikle tek bir A4 yatay sayfaya sığma garantisi (çoklu sayfaya bölünme engellenmiştir).
+- Arka planda kesintisiz indirme; indirme sırasında arayüzdeki diğer butonlar asla kilitlenmez.
+- Bellek temizliği (`cleanup`) ile art arda sınırsız kez sorunsuz indirme.
+
+#### 3.5. Excel (.xlsx) Raporlama
+- Sınıfın tüm öğrenci listesi, oturma kodu, sıra bloğu, cinsiyeti ve tarih bazlı gözlem/yorumları içeren resmi Excel dökümü.
+
+#### 3.6. Öğrenci Gözlem & Gelişim Takip Modülü
+- Öğrenci bazında tarihli gözlem kaydı (Katılım, Davranış & Uyum, Sıra Arkadaşı İlişkisi, Ödev & Hazırlık, Genel Gözlem).
+- Sınıf genel notları tutabilme.
+- Mobilde alt kısımdan kesilmeyen, güvenli kaydırma alanına (`pb-20`) sahip modal tasarımı.
+
+---
+
+### 4. Mobil Kullanılabilirlik Standartları
+- 375px'den başlayan tüm ekran genişliklerinde tam responsive uyum.
+- Navbar dikey katlanabilir düzen (`flex-col sm:flex-row`).
+- Sıra planında yatay kaydırma desteği (`overflow-x-auto touch-pan-x`).
+- Tüm buton ve etkileşim alanlarında minimum 44px (`min-h-[44px]`) dokunma hedefi boyutu.

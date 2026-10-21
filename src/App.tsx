@@ -13,7 +13,7 @@ import {
   createStarterClassroomForGoogleTeacher,
   clearStoredSessionData,
 } from './services/storageService';
-import { initAuth, googleSignIn, logout } from './services/firebaseAuth';
+import { initAuth, googleSignIn, logout, isAuthorizedSchoolEmail } from './services/firebaseAuth';
 import {
   subscribeTeacherClasses,
   saveClassroomToFirestore,
@@ -101,7 +101,13 @@ export default function App() {
 
   // Sync Google User into Teacher and Classroom state with Firestore real-time listener
   const syncGoogleUserTeacher = useCallback(
-    (user: any) => {
+    async (user: any) => {
+      if (!isAuthorizedSchoolEmail(user.email)) {
+        await logout();
+        showToast('Güvenlik nedeniyle sisteme yalnızca okul kurumsal e-posta adresiniz ile giriş yapabilirsiniz.', 'warning');
+        return;
+      }
+
       setIsGoogleConnected(true);
       setGoogleUser(user);
 
@@ -191,8 +197,14 @@ export default function App() {
   // Initialize Firebase Auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
-      (user) => {
+      async (user) => {
         if (user) {
+          if (!isAuthorizedSchoolEmail(user.email)) {
+            await logout();
+            showToast('Güvenlik nedeniyle sisteme yalnızca okul kurumsal e-posta adresiniz ile giriş yapabilirsiniz.', 'warning');
+            setIsAuthChecking(false);
+            return;
+          }
           syncGoogleUserTeacher(user);
         } else {
           setIsGoogleConnected(false);
@@ -342,6 +354,11 @@ export default function App() {
     try {
       const user = await googleSignIn();
       if (user) {
+        if (!isAuthorizedSchoolEmail(user.email)) {
+          await logout();
+          showToast('Güvenlik nedeniyle sisteme yalnızca okul kurumsal e-posta adresiniz ile giriş yapabilirsiniz.', 'warning');
+          return;
+        }
         syncGoogleUserTeacher(user);
         showToast(`Google ile başarıyla giriş yapıldı: ${user.displayName || user.email}`, 'success');
       }
@@ -379,7 +396,7 @@ export default function App() {
     async (updatedClass: Classroom) => {
       // Guard: Never modify or write read-only school classes
       if (isCurrentClassReadOnly || updatedClass.isReadOnly) {
-        showToast('Salt Okunur modda olan bir sınıfta değişiklik yapılamaz.', 'warning');
+        showToast('Diğer sınıflarda düzenleme yetkisi yalnızca sınıfın kendi öğretmenine aittir.', 'warning');
         return;
       }
 
@@ -821,7 +838,7 @@ export default function App() {
   // SHUFFLE SEATS
   const handleShuffleSeats = () => {
     if (!currentClassroom || isCurrentClassReadOnly) {
-      if (isCurrentClassReadOnly) showToast('Salt Okunur modda sıralar karıştırılamaz.', 'warning');
+      if (isCurrentClassReadOnly) showToast('Diğer sınıflarda sıralar karıştırılamaz.', 'warning');
       return;
     }
 
@@ -865,7 +882,7 @@ export default function App() {
   // RESET SEATS BY STUDENT NUMBER
   const handleResetSeats = () => {
     if (!currentClassroom || isCurrentClassReadOnly) {
-      if (isCurrentClassReadOnly) showToast('Salt Okunur modda sıralar sıfırlanamaz.', 'warning');
+      if (isCurrentClassReadOnly) showToast('Diğer sınıflarda sıralar sıfırlanamaz.', 'warning');
       return;
     }
 

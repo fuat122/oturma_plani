@@ -92,13 +92,13 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
         </div>
 
         {/* Right: Ana Aksiyon Butonları (Sınıfı Düzenle, PDF İndir, Excel vb.) */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {/* SINIFI DÜZENLE (Salt Okunur modda gizlenir) */}
           {!readOnlyActive && (
             <button
               type="button"
               onClick={onOpenStudentManagement}
-              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px]"
               title="Öğrenci listesi, ad-soyad, numara, cinsiyet düzenleme ve toplu ekleme/silme"
             >
               <UserCog className="w-4 h-4 text-blue-100" />
@@ -110,7 +110,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
           <button
             type="button"
             onClick={onExportPDF}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px]"
             title="A4 Yatay formatında Oturma Planı PDF'i indir"
           >
             {isExportingPDF ? (
@@ -128,7 +128,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
           <button
             type="button"
             onClick={onExportExcel}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px]"
             title="Oturma Planı ve Öğrenci Listesini Excel (.xlsx) olarak indir"
           >
             {isExportingExcel ? (
@@ -147,7 +147,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenReports}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px]"
               title="Tarih bazlı öğrenci gözlem ve yorumlarını aç"
             >
               <BookOpen className="w-4 h-4 text-indigo-100" />
@@ -164,7 +164,7 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer ${
+            className={`px-3 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px] ${
               isExpanded
                 ? 'bg-slate-200 text-slate-800 border-slate-300 shadow-inner'
                 : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200/90 shadow-2xs'
