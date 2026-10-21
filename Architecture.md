@@ -133,3 +133,9 @@ Diğer öğretmenlerin oturma planlarını görüntülerken kişisel öğrenci g
   - 10px hareket eşiği aşıldığında dokunmatik sürükleme aktifleşir ve `document.elementFromPoint(x, y)` ile hedef sıra belirlenir.
 - **Yatay Kaydırma (Horizontal Pan):**
   - Sınıf oturma planı 3 bloklu yapıyı mobilde bozmadan `overflow-x-auto touch-pan-x` ile akıcı kaydırılabilir genişlikte (`min-w-[860px]`) tutulur.
+
+---
+
+### 6. Güvenlik & Kurumsal E-Posta Doğrulaması
+- **Domain Kısıtı:** Yalnızca `@alkev.k12.tr` uzantılı kurumsal e-posta adresleri veya yetkili sistem yöneticisi (`fuattosun@gmail.com`) sisteme kabul edilir.
+- **İhlal Protokolü:** Giriş yapan hesap `@alkev.k12.tr` ile bitmiyorsa `auth.signOut()` ile oturum derhal sonlandırılır, kırmızı renkli hata bildirimi gösterilir ve dashboard verilerine erişim engellenir.

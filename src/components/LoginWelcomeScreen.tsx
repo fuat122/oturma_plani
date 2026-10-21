@@ -119,7 +119,7 @@ export const LoginWelcomeScreen: React.FC<LoginWelcomeScreenProps> = ({
                 <span>{isLoading ? 'Giriş Yapılıyor...' : 'Google ile Giriş Yap'}</span>
               </button>
               <p className="text-[11px] text-slate-400 mt-2.5 font-medium">
-                ℹ️ Sadece kurumsal okul e-posta adresleri kabul edilmektedir.
+                ℹ️ Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri kabul edilmektedir.
               </p>
             </div>
 

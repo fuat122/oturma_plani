@@ -67,7 +67,7 @@ export default function App() {
   // Export states
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'warning' } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'warning' | 'error' } | null>(null);
 
   // Confirmation Modal
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -87,11 +87,11 @@ export default function App() {
   const firestoreUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Show Toast Helper
-  const showToast = useCallback((text: string, type: 'success' | 'info' | 'warning' = 'success') => {
+  const showToast = useCallback((text: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => {
       setToastMessage(null);
-    }, 4000);
+    }, 4500);
   }, []);
 
   // Test Firestore connection on mount
@@ -104,7 +104,10 @@ export default function App() {
     async (user: any) => {
       if (!isAuthorizedSchoolEmail(user.email)) {
         await logout();
-        showToast('Güvenlik nedeniyle sisteme yalnızca okul kurumsal e-posta adresiniz ile giriş yapabilirsiniz.', 'warning');
+        showToast(
+          'Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.',
+          'error'
+        );
         return;
       }
 
@@ -201,7 +204,10 @@ export default function App() {
         if (user) {
           if (!isAuthorizedSchoolEmail(user.email)) {
             await logout();
-            showToast('Güvenlik nedeniyle sisteme yalnızca okul kurumsal e-posta adresiniz ile giriş yapabilirsiniz.', 'warning');
+            showToast(
+              'Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.',
+              'error'
+            );
             setIsAuthChecking(false);
             return;
           }
@@ -356,7 +362,10 @@ export default function App() {
       if (user) {
         if (!isAuthorizedSchoolEmail(user.email)) {
           await logout();
-          showToast('Güvenlik nedeniyle sisteme yalnızca okul kurumsal e-posta adresiniz ile giriş yapabilirsiniz.', 'warning');
+          showToast(
+            'Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.',
+            'error'
+          );
           return;
         }
         syncGoogleUserTeacher(user);
@@ -978,9 +987,18 @@ export default function App() {
     return (
       <>
         {toastMessage && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs font-medium border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200 no-print max-w-md">
+          <div
+            className={`fixed top-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3.5 rounded-2xl shadow-2xl text-xs font-semibold animate-in fade-in slide-in-from-top-4 duration-200 no-print max-w-md ${
+              toastMessage.type === 'error'
+                ? 'bg-rose-950/95 text-rose-100 border border-rose-500/90 shadow-rose-950/50'
+                : toastMessage.type === 'warning'
+                ? 'bg-amber-950/95 text-amber-100 border border-amber-500/90 shadow-amber-950/50'
+                : 'bg-slate-900 text-white border border-slate-700 shadow-xl'
+            }`}
+          >
             {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
             {toastMessage.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />}
+            {toastMessage.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />}
             {toastMessage.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
             <span className="leading-tight">{toastMessage.text}</span>
           </div>
@@ -995,9 +1013,18 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-slate-50/70 text-slate-900">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs font-medium border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200 no-print max-w-md">
+        <div
+          className={`fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-3.5 rounded-2xl shadow-2xl text-xs font-semibold animate-in fade-in slide-in-from-top-4 duration-200 no-print max-w-md ${
+            toastMessage.type === 'error'
+              ? 'bg-rose-950/95 text-rose-100 border border-rose-500/90 shadow-rose-950/50'
+              : toastMessage.type === 'warning'
+              ? 'bg-amber-950/95 text-amber-100 border border-amber-500/90 shadow-amber-950/50'
+              : 'bg-slate-900 text-white border border-slate-700 shadow-xl'
+          }`}
+        >
           {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
           {toastMessage.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />}
+          {toastMessage.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />}
           {toastMessage.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
           <span className="leading-tight">{toastMessage.text}</span>
         </div>

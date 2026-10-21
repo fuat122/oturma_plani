@@ -25,9 +25,9 @@
 #### 3.1. Kimlik Doğrulama & Kurumsal Güvenlik
 - **Google OAuth Girişi:** Firebase Auth altyapısı ile tek tıkla güvenli giriş.
 - **Kurumsal Okul Domain Kontrolü:**
-  - Yalnızca `@okul.k12.tr`, `*.k12.tr`, `*.edu.tr` uzantılı kurumsal okul e-posta adresleri veya yetkili sistem yöneticisi (`fuattosun@gmail.com`) kabul edilir.
-  - Yetkisiz bir e-posta ile giriş yapılırsa oturum derhal kapatılır (`await logout()`) ve kullanıcıya açıklayıcı güvenlik uyarısı gösterilir.
-  - Giriş ekranında ve öğretmen panellerinde: `"ℹ️ Sadece kurumsal okul e-posta adresleri kabul edilmektedir."` bilgisi açıkça yer alır.
+  - Yalnızca `@alkev.k12.tr` uzantılı kurumsal okul e-posta adresleri veya yetkili sistem yöneticisi (`fuattosun@gmail.com`) kabul edilir.
+  - E-posta adresi `@alkev.k12.tr` ile bitmiyorsa oturum derhal kapatılır (`await logout()`) ve kullanıcıya kırmızı renkli açıklayıcı güvenlik uyarısı gösterilir: `"Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz."`
+  - Giriş ekranında ve öğretmen panellerinde: `"ℹ️ Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri kabul edilmektedir."` bilgisi açıkça yer alır.
 - **Sıkı Veri İzolasyonu (Multi-Tenancy):**
   - Her öğretmenin sınıfları Firestore'da `teachers/{teacherId}/classes/{classId}` altında saklanır.
   - Oturum kapalıyken hiçbir öğrenci veya sınıf verisi bellekte tutulmaz.

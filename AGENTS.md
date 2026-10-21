@@ -22,9 +22,9 @@ Bu döküman, **Akıllı Sınıf** projesinde kod yazan, refactor eden veya mima
      *(Örnek: "Altan AKA Danışmanlığında 9-A Sınıfı")*
 
 3. **Kurumsal E-Posta Güvenlik Doğrulaması:**
-   - Google Auth girişinde kullanıcının e-posta adresi kontrol edilmelidir (`.k12.tr`, `.edu.tr`, `okul.k12.tr` veya yetkili hesap `fuattosun@gmail.com`).
-   - Yetkisiz adreslerde oturum derhal kapatılmalı ve ekrana şık bir uyarı verilmelidir.
-   - Giriş ekranlarında `"ℹ️ Sadece kurumsal okul e-posta adresleri kabul edilmektedir."` ibaresi her zaman korunmalıdır.
+   - Google Auth girişinde kullanıcının e-posta adresi kontrol edilmelidir (Yalnızca `@alkev.k12.tr` ile biten kurumsal adresler veya yetkili hesap `fuattosun@gmail.com`).
+   - Yetkisiz adreslerde oturum derhal kapatılmalı (`await auth.signOut()`) ve ekrana kırmızı renkli uyarı verilmelidir: `"Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz."`
+   - Giriş ekranlarında `"ℹ️ Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri kabul edilmektedir."` ibaresi her zaman korunmalıdır.
 
 4. **PDF İndirme Motoru & Tek Sayfa Standartı:**
    - Asla HTML2Canvas kütüphanesini ana sayfa DOM'una bağlayıp Tailwind v4 `oklch` hatası oluşturulmamalıdır.
