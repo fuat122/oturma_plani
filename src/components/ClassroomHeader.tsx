@@ -110,7 +110,8 @@ export const ClassroomHeader: React.FC<ClassroomHeaderProps> = ({
           <button
             type="button"
             onClick={onExportPDF}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px]"
+            disabled={isExportingPDF}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer min-h-[44px]"
             title="A4 Yatay formatında Oturma Planı PDF'i indir"
           >
             {isExportingPDF ? (

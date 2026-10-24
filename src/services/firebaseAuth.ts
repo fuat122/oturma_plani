@@ -25,6 +25,17 @@ export const initAuth = (
   onAuthFailure?: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
+    if (user && user.email) {
+      const isAlkev = user.email.toLowerCase().endsWith('@alkev.k12.tr');
+      if (!isAlkev) {
+        await auth.signOut();
+        try {
+          alert('Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.');
+        } catch (_) {}
+        if (onAuthFailure) onAuthFailure();
+        return;
+      }
+    }
     if (user) {
       if (onAuthSuccess) onAuthSuccess(user);
     } else {
@@ -36,7 +47,18 @@ export const initAuth = (
 export const googleSignIn = async (): Promise<User | null> => {
   try {
     const result = await signInWithPopup(auth, provider);
-    return result.user;
+    const user = result.user;
+    if (user && user.email) {
+      const isAlkev = user.email.toLowerCase().endsWith('@alkev.k12.tr');
+      if (!isAlkev) {
+        await auth.signOut();
+        try {
+          alert('Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.');
+        } catch (_) {}
+        return null;
+      }
+    }
+    return user;
   } catch (error: any) {
     console.error('Google ile giriş hatası:', error);
     throw error;
@@ -49,15 +71,9 @@ export const logout = async () => {
 
 /**
  * Kurumsal okul e-posta domain kontrolü:
- * Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri veya yetkili hesap kabul edilir.
+ * Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri kabul edilir.
  */
 export const isAuthorizedSchoolEmail = (email: string | null | undefined): boolean => {
   if (!email) return false;
-  const normalized = email.trim().toLowerCase();
-
-  // Aktif kullanıcı / yetkili yönetici istisnası
-  if (normalized === 'fuattosun@gmail.com') return true;
-
-  // Yalnızca @alkev.k12.tr kurumsal domaini
-  return normalized.endsWith('@alkev.k12.tr');
+  return email.trim().toLowerCase().endsWith('@alkev.k12.tr');
 };

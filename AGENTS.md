@@ -22,15 +22,14 @@ Bu döküman, **Akıllı Sınıf** projesinde kod yazan, refactor eden veya mima
      *(Örnek: "Altan AKA Danışmanlığında 9-A Sınıfı")*
 
 3. **Kurumsal E-Posta Güvenlik Doğrulaması:**
-   - Google Auth girişinde kullanıcının e-posta adresi kontrol edilmelidir (Yalnızca `@alkev.k12.tr` ile biten kurumsal adresler veya yetkili hesap `fuattosun@gmail.com`).
-   - Yetkisiz adreslerde oturum derhal kapatılmalı (`await auth.signOut()`) ve ekrana kırmızı renkli uyarı verilmelidir: `"Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz."`
+   - Google Auth girişinde (hem `signInWithPopup` callback'inde hem de `onAuthStateChanged` dinleyicisinde) kullanıcının e-posta adresi kontrol edilmelidir (Yalnızca `@alkev.k12.tr` uzantılı kurumsal adresler kabul edilir).
+   - `@alkev.k12.tr` ile bitmeyen adreslerde oturum derhal kapatılmalı (`await auth.signOut()`) ve ekrana uyarı verilmelidir: `"Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz."`
    - Giriş ekranlarında `"ℹ️ Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri kabul edilmektedir."` ibaresi her zaman korunmalıdır.
 
-4. **PDF İndirme Motoru & Tek Sayfa Standartı:**
-   - Asla HTML2Canvas kütüphanesini ana sayfa DOM'una bağlayıp Tailwind v4 `oklch` hatası oluşturulmamalıdır.
-   - Her zaman `src/services/pdfService.ts` içindeki yerel Canvas 2D motoru kullanılmalıdır.
-   - PDF oluşturma fonksiyonu butonları asla kilitlememeli, işlem arka planda yürütülmeli ve `finally` bloğunda bellek temizliği (`cleanup`) yapılmalıdır.
-   - Çıktı tek bir A4 yatay sayfaya sığdırılmalıdır.
+4. **PDF İndirme Motoru & Tek Sayfa Standartı (Off-Screen A4 Template):**
+   - Tailwind v4 `oklch()` renk hatalarını ve mobil darlık çökmelerini önlemek için ekrandaki mevcut DOM doğrudan yakalanmamalıdır.
+   - Arka planda gizli (`position: fixed; left: -9999px; top: 0; width: 1200px;`) olarak oluşturulan ve yalnızca standart HEX renkler/inline stiller kullanan A4 Yatay şablon `html2canvas(element, { scale: 2, useCORS: true })` ile yakalanıp `jsPDF('landscape', 'mm', 'a4')` ile tek sayfa olarak indirilmelidir.
+   - `finally` bloğunda oluşturulan bu gizli eleman DOM'dan tamamen temizlenmeli (`element.remove()`), butonda yükleniyor durumu gösterilerek üst üste tıklamalar engellenmelidir.
 
 5. **Mobil Dokunmatik Standartlar (Mobile Touch & Responsive):**
    - Tüm butonlar ve etkileşimli alanlar minimum 44px (`min-h-[44px]`) dokunma boyutunda olmalıdır.

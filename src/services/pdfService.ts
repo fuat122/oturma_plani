@@ -1,3 +1,4 @@
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Classroom, Teacher } from '../types';
 
@@ -6,176 +7,36 @@ export interface PDFExportOptions {
   teacher: Teacher;
 }
 
-// Concurrency guard to prevent memory exhaustion on rapid multiple clicks
+// Concurrency guard to prevent rapid repeated clicks from running multiple exports
 let isCurrentlyGeneratingPDF = false;
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /**
- * High-Resolution HTML5 Canvas 2D Drawing Engine for Official A4 Landscape Seating Plan.
- * 
- * 100% immune to CSS parser errors ("oklch", Tailwind v4 variables, etc.).
- * Operates purely with standard HEX / RGB 2D Canvas primitives.
- * Fixed 2400 x 1700 px resolution (300 DPI clarity) guaranteeing exact 1-page fit on all devices.
+ * Builds an off-screen, fixed 1200px wide A4 Landscape print container.
+ * Uses ONLY inline CSS and standard HEX colors (#ffffff, #1e293b, etc.)
+ * Completely immune to Tailwind CSS v4 oklch() color issues or mobile viewport squishing.
  */
-function renderSeatingPlanToCanvas(classroom: Classroom, teacher: Teacher): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  // 300 DPI A4 Landscape: 2480 x 1754
-  const W = 2480;
-  const H = 1754;
-  canvas.width = W;
-  canvas.height = H;
+function createOffscreenPrintTemplate(classroom: Classroom, teacher: Teacher): HTMLElement {
+  const container = document.createElement('div');
+  container.id = 'offscreen-a4-pdf-container';
+  container.setAttribute(
+    'style',
+    'position: fixed; left: -9999px; top: 0; width: 1200px; background: #ffffff; color: #1e293b; z-index: -9999; box-sizing: border-box; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;'
+  );
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Canvas 2D context oluşturulamadı.');
-  }
-
-  // 1. Background
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
-  // Outer border & margins
-  const margin = 40;
-  const contentW = W - margin * 2;
-  const contentH = H - margin * 2;
-
-  ctx.strokeStyle = '#0f172a';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(margin, margin, contentW, contentH);
-
-  let curY = margin + 30;
-
-  // 2. Official Header (MEB & Dynamic Title)
   const consultantName = classroom.teacherName || teacher.name;
   const fullTitle = `${consultantName} Danışmanlığında ${classroom.name} Sınıfı`;
   const dateStr = new Date().toLocaleDateString('tr-TR');
 
-  // Subtitle MEB
-  ctx.fillStyle = '#475569';
-  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('T.C. MİLLÎ EĞİTİM BAKANLIĞI', W / 2, curY);
-
-  curY += 46;
-
-  // Main Dynamic Title
-  ctx.fillStyle = '#020617';
-  ctx.font = 'bold 44px system-ui, -apple-system, sans-serif';
-  ctx.fillText(fullTitle, W / 2, curY);
-
-  curY += 32;
-
-  // Document Badge
-  ctx.fillStyle = '#0284c7';
-  ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-  ctx.fillText('RESMÎ SINIF OTURMA PLANI', W / 2, curY);
-
-  curY += 24;
-
-  // Divider Line
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(margin + 20, curY);
-  ctx.lineTo(W - margin - 20, curY);
-  ctx.stroke();
-
-  curY += 16;
-
-  // 3. Information Strip (3 Columns: Danışman Öğretmen, Öğretim Yılı / Kademe, Mevcut / Kapasite)
-  const stripH = 75;
-  const stripW = contentW - 40;
-  const stripX = margin + 20;
-
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(stripX, curY, stripW, stripH);
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(stripX, curY, stripW, stripH);
-
-  const colW = stripW / 3;
-
-  // Column 1: Danışman Öğretmen
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#64748b';
-  ctx.font = 'bold 16px system-ui, -apple-system, sans-serif';
-  ctx.fillText('DANIŞMAN ÖĞRETMEN', stripX + colW * 0.5, curY + 24);
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-  ctx.fillText(consultantName, stripX + colW * 0.5, curY + 52);
-
-  // Divider 1
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.beginPath();
-  ctx.moveTo(stripX + colW, curY + 8);
-  ctx.lineTo(stripX + colW, curY + stripH - 8);
-  ctx.stroke();
-
-  // Column 2: Öğretim Yılı / Kademe
-  ctx.fillStyle = '#64748b';
-  ctx.font = 'bold 16px system-ui, -apple-system, sans-serif';
-  ctx.fillText('ÖĞRETİM YILI / KADEME', stripX + colW * 1.5, curY + 24);
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`${classroom.academicYear} • ${classroom.grade}`, stripX + colW * 1.5, curY + 52);
-
-  // Divider 2
-  ctx.beginPath();
-  ctx.moveTo(stripX + colW * 2, curY + 8);
-  ctx.lineTo(stripX + colW * 2, curY + stripH - 8);
-  ctx.stroke();
-
-  // Column 3: Mevcut / Kapasite
-  ctx.fillStyle = '#64748b';
-  ctx.font = 'bold 16px system-ui, -apple-system, sans-serif';
-  ctx.fillText('MEVCUT / KAPASİTE', stripX + colW * 2.5, curY + 24);
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`${classroom.students.length} / ${classroom.seats.length} Öğrenci (${dateStr})`, stripX + colW * 2.5, curY + 52);
-
-  curY += stripH + 16;
-
-  // 4. Front Strip: Kapı / Akıllı Tahta / Camlar
-  const frontH = 50;
-  const doorW = 340;
-  const camW = 340;
-  const boardW = stripW - doorW - camW - 24;
-
-  // Giriş Kapısı
-  const doorX = stripX;
-  ctx.fillStyle = '#fef3c7';
-  ctx.fillRect(doorX, curY, doorW, frontH);
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(doorX, curY, doorW, frontH);
-  ctx.fillStyle = '#92400e';
-  ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-  ctx.fillText('🚪 GİRİŞ KAPISI', doorX + doorW / 2, curY + 32);
-
-  // Akıllı Tahta (Ön Cephe)
-  const boardX = doorX + doorW + 12;
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(boardX, curY, boardW, frontH);
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(boardX, curY, boardW, frontH);
-  ctx.fillStyle = '#34d399';
-  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-  ctx.fillText('ÖĞRETMEN KÜRSÜSÜ / AKILLI TAHTA (ÖN CEPHE)', boardX + boardW / 2, curY + 32);
-
-  // Camlar
-  const camX = boardX + boardW + 12;
-  ctx.fillStyle = '#e0f2fe';
-  ctx.fillRect(camX, curY, camW, frontH);
-  ctx.strokeStyle = '#0284c7';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(camX, curY, camW, frontH);
-  ctx.fillStyle = '#0369a1';
-  ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-  ctx.fillText('🪟 CAMLAR (DIŞ CEPHE)', camX + camW / 2, curY + 32);
-
-  curY += frontH + 20;
-
-  // 5. 3 Seating Blocks (Duvar Kenarı, Orta Blok, Cam Kenarı)
+  // Blocks definitions
   const blocksMeta = [
     {
       key: 'duvar',
@@ -208,62 +69,17 @@ function renderSeatingPlanToCanvas(classroom: Classroom, teacher: Teacher): HTML
     4
   );
 
-  const blockSpacing = 18;
-  const blockW = (stripW - blockSpacing * 2) / 3;
-  
-  // Available height for blocks
-  const footerAreaH = 140;
-  const blockH = H - margin - footerAreaH - curY;
+  let blocksHtml = '';
 
-  blocksMeta.forEach((block, bIdx) => {
-    const bX = stripX + bIdx * (blockW + blockSpacing);
-    const bY = curY;
-
-    // Block Container Background & Border
-    ctx.fillStyle = '#fafafa';
-    ctx.fillRect(bX, bY, blockW, blockH);
-    ctx.strokeStyle = block.borderColor;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(bX, bY, blockW, blockH);
-
-    // Block Header
-    const bHeaderH = 46;
-    ctx.fillStyle = block.headerBg;
-    ctx.fillRect(bX, bY, blockW, bHeaderH);
-    ctx.strokeStyle = block.borderColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(bX, bY, blockW, bHeaderH);
-
-    ctx.fillStyle = block.headerColor;
-    ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${block.icon} ${block.name}`, bX + blockW / 2, bY + 30);
-
-    // Rows calculation
+  blocksMeta.forEach((block) => {
     const blockSeats = classroom.seats.filter((s) => s.block === block.key);
-    const rowsPaddingTop = 15;
-    const availableRowH = blockH - bHeaderH - rowsPaddingTop - 15;
-    const singleRowTotalH = availableRowH / maxRows;
-    const deskCardH = Math.min(singleRowTotalH - 22, 110);
+    let rowsHtml = '';
 
     for (let r = 1; r <= maxRows; r++) {
       const rowSeats = blockSeats.filter((s) => s.row === r);
-      const rowY = bY + bHeaderH + rowsPaddingTop + (r - 1) * singleRowTotalH;
-
-      // Row indicator label
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 15px system-ui, -apple-system, sans-serif';
-      ctx.fillText(`${r}. Sıra`, bX + 16, rowY + 14);
-
-      // Two desks per row
-      const deskGap = 12;
-      const deskW = (blockW - 32 - deskGap) / 2;
+      let desksHtml = '';
 
       for (let col = 1; col <= 2; col++) {
-        const deskX = bX + 16 + (col - 1) * (deskW + deskGap);
-        const deskY = rowY + 20;
-
         const seat = rowSeats.find((s) => s.col === col);
         const student = seat?.studentId
           ? classroom.students.find((st) => st.id === seat.studentId)
@@ -273,118 +89,125 @@ function renderSeatingPlanToCanvas(classroom: Classroom, teacher: Teacher): HTML
           const isGirl = student.gender === 'K';
           const cardBg = isGirl ? '#fff1f2' : '#ffffff';
           const cardBorder = isGirl ? '#fb7185' : '#1e293b';
-
-          // Desk card background
-          ctx.fillStyle = cardBg;
-          ctx.fillRect(deskX, deskY, deskW, deskCardH);
-          ctx.strokeStyle = cardBorder;
-          ctx.lineWidth = 2.5;
-          ctx.strokeRect(deskX, deskY, deskW, deskCardH);
-
-          // Top Badges (Number & Gender)
-          // Badge 1: No
-          ctx.fillStyle = '#e2e8f0';
-          ctx.fillRect(deskX + 8, deskY + 8, 70, 24);
-          ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 14px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(`#${student.studentNumber}`, deskX + 8 + 35, deskY + 25);
-
-          // Badge 2: Gender
           const genderBg = isGirl ? '#fecdd3' : '#dbeafe';
           const genderColor = isGirl ? '#9f1239' : '#1e40af';
-          ctx.fillStyle = genderBg;
-          ctx.fillRect(deskX + deskW - 8 - 45, deskY + 8, 45, 24);
-          ctx.fillStyle = genderColor;
-          ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(isGirl ? 'Kız' : 'Erk', deskX + deskW - 8 - 22.5, deskY + 25);
+          const nameColor = isGirl ? '#881337' : '#0f172a';
 
-          // Full Name
-          ctx.fillStyle = isGirl ? '#881337' : '#020617';
-          ctx.font = 'bold 19px system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'center';
-
-          // Truncate name if too long for desk card
-          let displayName = student.fullName.toUpperCase();
-          while (ctx.measureText(displayName).width > deskW - 20 && displayName.length > 5) {
-            displayName = displayName.slice(0, -1);
-          }
-          if (displayName !== student.fullName.toUpperCase()) {
-            displayName += '..';
-          }
-          ctx.fillText(displayName, deskX + deskW / 2, deskY + deskCardH - 18);
+          desksHtml += `
+            <div style="flex: 1; background: ${cardBg}; border: 1.5px solid ${cardBorder}; border-radius: 6px; padding: 6px 8px; box-sizing: border-box; min-height: 52px; display: flex; flex-direction: column; justify-content: space-between;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <span style="font-family: monospace; font-size: 10px; font-weight: 700; background: #e2e8f0; color: #0f172a; padding: 1px 5px; border-radius: 4px;">#${escapeHtml(student.studentNumber)}</span>
+                <span style="font-size: 9px; font-weight: 700; background: ${genderBg}; color: ${genderColor}; padding: 1px 5px; border-radius: 4px;">${isGirl ? 'Kız' : 'Erk'}</span>
+              </div>
+              <div style="font-size: 11px; font-weight: 800; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;">
+                ${escapeHtml(student.fullName.toUpperCase())}
+              </div>
+            </div>
+          `;
         } else {
-          // Empty Desk
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(deskX, deskY, deskW, deskCardH);
-          ctx.strokeStyle = '#cbd5e1';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([6, 4]);
-          ctx.strokeRect(deskX, deskY, deskW, deskCardH);
-          ctx.setLineDash([]); // Reset line dash
-
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText(`#${col}`, deskX + 10, deskY + 24);
-
-          ctx.textAlign = 'center';
-          ctx.font = 'italic bold 16px system-ui, -apple-system, sans-serif';
-          ctx.fillText('Boş Sıra', deskX + deskW / 2, deskY + deskCardH / 2 + 6);
+          desksHtml += `
+            <div style="flex: 1; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 6px; padding: 6px 8px; box-sizing: border-box; min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+              <span style="font-size: 9px; color: #94a3b8; font-weight: 700;">#${col}</span>
+              <span style="font-size: 10px; color: #94a3b8; font-style: italic; font-weight: 600;">Boş Sıra</span>
+            </div>
+          `;
         }
       }
+
+      rowsHtml += `
+        <div style="margin-bottom: 7px;">
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 2px;">${r}. Sıra</div>
+          <div style="display: flex; gap: 8px;">
+            ${desksHtml}
+          </div>
+        </div>
+      `;
     }
+
+    blocksHtml += `
+      <div style="flex: 1; background: #fafafa; border: 2px solid ${block.borderColor}; border-radius: 8px; padding: 10px; box-sizing: border-box;">
+        <div style="background: ${block.headerBg}; border: 1px solid ${block.borderColor}; border-radius: 6px; padding: 6px; text-align: center; font-weight: 800; font-size: 12px; color: ${block.headerColor}; margin-bottom: 8px;">
+          ${block.icon} ${block.name}
+        </div>
+        <div>
+          ${rowsHtml}
+        </div>
+      </div>
+    `;
   });
 
-  // 6. Bottom Official Signatures & Seal Section
-  const footerY = H - margin - footerAreaH + 15;
-  ctx.strokeStyle = '#0f172a';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(stripX, footerY);
-  ctx.lineTo(stripX + stripW, footerY);
-  ctx.stroke();
+  container.innerHTML = `
+    <div style="border: 2px solid #0f172a; border-radius: 12px; padding: 20px; background: #ffffff;">
+      <!-- MEB Official Header -->
+      <div style="text-align: center; font-size: 13px; font-weight: 700; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">
+        T.C. MİLLÎ EĞİTİM BAKANLIĞI
+      </div>
+      <h1 style="text-align: center; font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; letter-spacing: -0.5px;">
+        ${escapeHtml(fullTitle)}
+      </h1>
+      <div style="text-align: center; margin-bottom: 12px;">
+        <span style="display: inline-block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 800; padding: 3px 12px; border-radius: 9999px; letter-spacing: 0.5px;">
+          RESMÎ SINIF OTURMA PLANI
+        </span>
+      </div>
 
-  const signW = stripW / 2;
+      <!-- Information Strip (3 Columns) -->
+      <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;">
+        <div style="text-align: center; flex: 1; border-right: 1px solid #cbd5e1;">
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Danışman Öğretmen</div>
+          <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 2px;">${escapeHtml(consultantName)}</div>
+        </div>
+        <div style="text-align: center; flex: 1; border-right: 1px solid #cbd5e1;">
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Öğretim Yılı / Kademe</div>
+          <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 2px;">${escapeHtml(classroom.academicYear)} • ${escapeHtml(classroom.grade)}</div>
+        </div>
+        <div style="text-align: center; flex: 1;">
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Mevcut / Kapasite</div>
+          <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 2px;">${classroom.students.length} / ${classroom.seats.length} Öğrenci (${dateStr})</div>
+        </div>
+      </div>
 
-  // Danışman Öğretmen Signature Box
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#020617';
-  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-  ctx.fillText(consultantName, stripX + signW * 0.5, footerY + 36);
+      <!-- Front Stage (Kürsü / Tahta / Kapı / Camlar) -->
+      <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+        <div style="flex: 1; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px; text-align: center; font-weight: 700; font-size: 12px; color: #92400e;">
+          🚪 GİRİŞ KAPISI
+        </div>
+        <div style="flex: 2; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 8px; text-align: center; font-weight: 800; font-size: 13px; color: #34d399; letter-spacing: 0.5px;">
+          🖥️ ÖĞRETMEN KÜRSÜSÜ / AKILLI TAHTA (ÖN CEPHE)
+        </div>
+        <div style="flex: 1; background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 8px; text-align: center; font-weight: 700; font-size: 12px; color: #0369a1;">
+          🪟 CAMLAR (DIŞ CEPHE)
+        </div>
+      </div>
 
-  ctx.fillStyle = '#475569';
-  ctx.font = 'bold 17px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`${teacher.branch} / Danışman Öğretmen`, stripX + signW * 0.5, footerY + 62);
+      <!-- 3 Seating Blocks -->
+      <div style="display: flex; gap: 14px; margin-bottom: 14px;">
+        ${blocksHtml}
+      </div>
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '16px system-ui, -apple-system, sans-serif';
-  ctx.fillText('İmza: .....................................................', stripX + signW * 0.5, footerY + 98);
+      <!-- Official Signatures & Seal Section -->
+      <div style="display: flex; justify-content: space-between; border-top: 1.5px solid #0f172a; padding-top: 12px; margin-top: 6px;">
+        <div style="text-align: center; width: 45%;">
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a;">${escapeHtml(consultantName)}</div>
+          <div style="font-size: 11px; font-weight: 700; color: #475569; margin-top: 2px;">${escapeHtml(teacher.branch)} / Danışman Öğretmen</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 16px;">İmza: .....................................................</div>
+        </div>
+        <div style="text-align: center; width: 45%;">
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a;">Okul Müdürü</div>
+          <div style="font-size: 11px; font-weight: 700; color: #475569; margin-top: 2px;">Okul Müdürlüğü</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 16px;">Mühür / İmza: .....................................................</div>
+        </div>
+      </div>
+    </div>
+  `;
 
-  // Okul Müdürü Box
-  ctx.fillStyle = '#020617';
-  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Okul Müdürü', stripX + signW * 1.5, footerY + 36);
-
-  ctx.fillStyle = '#475569';
-  ctx.font = 'bold 17px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Okul Müdürlüğü', stripX + signW * 1.5, footerY + 62);
-
-  ctx.fillStyle = '#64748b';
-  ctx.font = '16px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Mühür / İmza: .....................................................', stripX + signW * 1.5, footerY + 98);
-
-  return canvas;
+  return container;
 }
 
 /**
  * Exports strictly ONLY the visual seating plan to a SINGLE-PAGE A4 Landscape PDF.
- * Uses the native Canvas 2D engine to completely eliminate:
- * 1. "oklch" color parser errors (zero CSS parsing).
- * 2. Multi-page breaks (guarantees exactly 1 page).
- * 3. Mobile responsiveness squishing (fixed 300 DPI 2480x1754 template).
- * 4. Memory leaks and concurrency locking (repeat clicks work flawlessly).
+ * Uses an off-screen fixed 1200px container rendered with standard HEX colors,
+ * captured via html2canvas and converted to high-definition A4 PDF with jsPDF.
  */
 export async function exportSeatingPlanToPDF(
   _elementId: string,
@@ -398,7 +221,7 @@ export async function exportSeatingPlanToPDF(
 
   isCurrentlyGeneratingPDF = true;
 
-  let canvas: HTMLCanvasElement | null = null;
+  let container: HTMLElement | null = null;
 
   try {
     const consultantName = classroom.teacherName || teacher.name;
@@ -407,23 +230,26 @@ export async function exportSeatingPlanToPDF(
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `${sanitizedConsultant}_Danismanliginda_${sanitizedClassName}_Oturma_Plani_${dateStr}.pdf`;
 
-    // Render directly to high-resolution canvas with standard 2D primitives
-    canvas = renderSeatingPlanToCanvas(classroom, teacher);
+    // 1. Create and attach off-screen container
+    container = createOffscreenPrintTemplate(classroom, teacher);
+    document.body.appendChild(container);
 
-    // Create Single-Page A4 Landscape PDF (297mm x 210mm)
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4',
-      compress: true,
+    // 2. Capture off-screen DOM element with html2canvas using scale: 2 and standard HEX colors
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
     });
 
+    // 3. Convert to Single-Page A4 Landscape PDF (297mm x 210mm)
+    const pdf = new jsPDF('landscape', 'mm', 'a4');
     const pdfWidth = 297;
     const pdfHeight = 210;
-    const margin = 5;
+    const margin = 8;
 
-    const maxContentWidth = pdfWidth - margin * 2; // 287mm
-    const maxContentHeight = pdfHeight - margin * 2; // 200mm
+    const maxContentWidth = pdfWidth - margin * 2;
+    const maxContentHeight = pdfHeight - margin * 2;
 
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
@@ -448,11 +274,9 @@ export async function exportSeatingPlanToPDF(
     console.error('PDF export error:', error);
     throw error;
   } finally {
-    // Immediate memory cleanup
-    if (canvas) {
-      canvas.width = 0;
-      canvas.height = 0;
-      canvas = null;
+    // 4. Guaranteed DOM cleanup
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
     }
     isCurrentlyGeneratingPDF = false;
   }

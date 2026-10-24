@@ -25,8 +25,8 @@
 #### 3.1. Kimlik Doğrulama & Kurumsal Güvenlik
 - **Google OAuth Girişi:** Firebase Auth altyapısı ile tek tıkla güvenli giriş.
 - **Kurumsal Okul Domain Kontrolü:**
-  - Yalnızca `@alkev.k12.tr` uzantılı kurumsal okul e-posta adresleri veya yetkili sistem yöneticisi (`fuattosun@gmail.com`) kabul edilir.
-  - E-posta adresi `@alkev.k12.tr` ile bitmiyorsa oturum derhal kapatılır (`await logout()`) ve kullanıcıya kırmızı renkli açıklayıcı güvenlik uyarısı gösterilir: `"Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz."`
+  - Yalnızca `@alkev.k12.tr` uzantılı kurumsal okul e-posta adresleri kabul edilir.
+  - E-posta adresi `@alkev.k12.tr` ile bitmiyorsa (hem `signInWithPopup` hem de `onAuthStateChanged` aşamasında) oturum derhal kapatılır (`await auth.signOut()`) ve kullanıcıya güvenlik uyarısı gösterilir: `"Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz."`
   - Giriş ekranında ve öğretmen panellerinde: `"ℹ️ Yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresleri kabul edilmektedir."` bilgisi açıkça yer alır.
 - **Sıkı Veri İzolasyonu (Multi-Tenancy):**
   - Her öğretmenin sınıfları Firestore'da `teachers/{teacherId}/classes/{classId}` altında saklanır.
@@ -47,12 +47,11 @@
   1. **Dokunmatik Sürükle-Bırak (Touch & HTML5 Drag & Drop):** Parmağı veya fareyi basılı tutarak hedef sıraya taşıma. Taşınan kartın üzerinde uçan önizleme (ghost) ve hedef sırada yeşil onay halkası gösterilir.
   2. **Dokunarak Değiştir (Tap-to-Swap):** İlk öğrenciye dokunulur (kart etrafında mavi seçim halkası belirir), ardından hedef sıraya dokunulduğunda öğrenciler anında yer değiştirir.
 
-#### 3.4. Tek Sayfa A4 Yatay PDF Baskı Motoru (Native Canvas 2D)
-- Tailwind CSS v4 `oklch()` renk fonksiyonundan kaynaklanan canvas çökmesini tamamen önleyen, dış CSS ayrıştırıcılarından bağımsız yerel Canvas 2D çizim motoru.
-- Standart 300 DPI (2480x1754 px) yüksek çözünürlük.
-- Kesinlikle tek bir A4 yatay sayfaya sığma garantisi (çoklu sayfaya bölünme engellenmiştir).
-- Arka planda kesintisiz indirme; indirme sırasında arayüzdeki diğer butonlar asla kilitlenmez.
-- Bellek temizliği (`cleanup`) ile art arda sınırsız kez sorunsuz indirme.
+#### 3.4. Tek Sayfa A4 Yatay PDF Baskı Motoru (Off-Screen A4 Print Template)
+- Tailwind CSS v4 `oklch()` renk fonksiyonu ve mobil ekran darlığı sorunlarını önleyen, arka planda gizli (`1200px`) oluşturulan ve yalnızca standart CSS/inline stiller (HEX renkler) kullanan özel A4 Yatay şablon.
+- `html2canvas(element, { scale: 2, useCORS: true })` ve `jsPDF('landscape', 'mm', 'a4')` motoru ile yüksek çözünürlüklü tek sayfa çıktı.
+- `finally` bloğunda bellek ve DOM temizliği (`cleanup`, `element.remove()`) ile art arda sınırsız kez sorunsuz indirme.
+- Butonda yükleniyor durumu ve eşzamanlı tıklama koruması.
 
 #### 3.5. Excel (.xlsx) Raporlama
 - Sınıfın tüm öğrenci listesi, oturma kodu, sıra bloğu, cinsiyeti ve tarih bazlı gözlem/yorumları içeren resmi Excel dökümü.
