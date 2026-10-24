@@ -49,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs no-print transition-all duration-200">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex flex-col gap-2 sm:flex-row items-stretch sm:items-center justify-between sm:gap-4">
         
         {/* ROW 1 ON MOBILE / LEFT ON DESKTOP: Brand & Mobile Profile Bar */}
         <div className="flex items-center justify-between gap-2 min-w-0">
@@ -75,7 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onOpenTeacherSwitcher}
-              className={`flex items-center gap-1.5 p-1 px-2.5 rounded-xl border text-left shadow-2xs cursor-pointer min-h-[38px] max-w-[140px] truncate ${
+              className={`flex items-center gap-1.5 p-1 px-2.5 rounded-xl border text-left shadow-2xs cursor-pointer min-h-[44px] max-w-[120px] truncate ${
                 activeTeacher.isGoogleUser
                   ? 'border-blue-200/90 bg-blue-50/90 text-blue-950'
                   : 'border-slate-200/90 bg-slate-50 text-slate-800'
@@ -93,17 +93,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {activeTeacher.name.charAt(0)}
                 </div>
               )}
-              <span className="text-[11px] font-bold truncate">{shortName}</span>
+              <span className="text-[11px] font-bold truncate max-w-[65px]">{shortName}</span>
             </button>
 
-            {isGoogleConnected && (
+            {isGoogleConnected ? (
               <button
                 type="button"
                 onClick={onGoogleLogout}
-                className="p-2 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center"
+                className="p-2 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                 title="Çıkış Yap"
               >
                 <LogOut className="w-4 h-4 text-rose-600" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenGoogleLogin}
+                className="p-2 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+                title="Google ile Giriş"
+              >
+                <UserCheck className="w-4 h-4 text-blue-600" />
               </button>
             )}
           </div>
@@ -112,19 +121,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* ROW 2 & 3 ON MOBILE / CENTER & CONTROLS ON DESKTOP */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-1 min-w-0 justify-between sm:justify-start">
           
-          {/* Main Tab Switcher: 'Sınıflarım' vs 'Diğer Sınıflar' (Full-width on mobile with comfortable touch targets) */}
-          <div className="flex items-center bg-slate-100/90 backdrop-blur-xs p-1 rounded-2xl border border-slate-200/80 shrink-0 shadow-2xs w-full sm:w-auto">
+          {/* Main Tab Switcher: 'Sınıflarım' vs 'Diğer Sınıflar' (grid grid-cols-2 w-full on mobile, sm:flex sm:w-auto on desktop) */}
+          <div className="grid grid-cols-2 w-full sm:flex sm:w-auto bg-slate-100/90 backdrop-blur-xs p-1 rounded-2xl border border-slate-200/80 shrink-0 shadow-2xs">
             <button
               type="button"
               onClick={() => onTabChange('my_classes')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ease-in-out cursor-pointer min-h-[42px] sm:min-h-[36px] ${
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ease-in-out cursor-pointer min-h-[44px] sm:min-h-[36px] ${
                 activeTab === 'my_classes'
                   ? 'bg-white text-blue-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
               title="Kendi sınıflarınız"
             >
-              <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+              <UserCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
               <span className="whitespace-nowrap">Sınıflarım</span>
               {classrooms.length > 0 && (
                 <span
@@ -142,14 +151,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => onTabChange('school_classes')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ease-in-out cursor-pointer min-h-[42px] sm:min-h-[36px] ${
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ease-in-out cursor-pointer min-h-[44px] sm:min-h-[36px] ${
                 activeTab === 'school_classes'
                   ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950 shadow-sm border border-amber-300/80'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
               title="Okuldaki diğer sınıflar"
             >
-              <Building2 className="w-3.5 h-3.5 text-amber-600" />
+              <Building2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <span className="whitespace-nowrap">Diğer Sınıflar</span>
               {schoolClassrooms.length > 0 && (
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-950 shadow-2xs">

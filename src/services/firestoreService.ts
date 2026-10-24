@@ -8,7 +8,6 @@ import {
   deleteDoc,
   onSnapshot,
   query,
-  getDocFromServer,
 } from 'firebase/firestore';
 import { db, auth } from './firebaseAuth';
 import { Classroom, StudentObservation } from '../types';
@@ -65,12 +64,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
     const testDoc = doc(db, 'test', 'connection');
-    await getDocFromServer(testDoc).catch(() => {});
+    await getDoc(testDoc).catch(() => {});
     return true;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore client is currently offline.');
-    }
+  } catch (_error) {
+    // Graceful offline operation
     return false;
   }
 }
