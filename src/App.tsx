@@ -197,35 +197,51 @@ export default function App() {
     [showToast]
   );
 
+  // Safety timeout: If Firebase auth listener takes more than 3 seconds, never stay in loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAuthChecking(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Initialize Firebase Auth listener
   useEffect(() => {
+    let isMounted = true;
+
     const unsubscribe = initAuth(
       async (user) => {
-        if (user) {
-          if (!isAuthorizedSchoolEmail(user.email)) {
-            await logout();
-            showToast(
-              'Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.',
-              'error'
-            );
-            setIsAuthChecking(false);
-            return;
+        try {
+          if (user) {
+            if (!isAuthorizedSchoolEmail(user.email)) {
+              await logout();
+              showToast(
+                'Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.',
+                'error'
+              );
+              return;
+            }
+            await syncGoogleUserTeacher(user);
+          } else {
+            setIsGoogleConnected(false);
+            setGoogleUser(null);
+            setTeachers([]);
+            setClassrooms([]);
+            setTeacherIdState('');
+            setClassIdState(null);
+            clearStoredSessionData();
+            if (firestoreUnsubscribeRef.current) {
+              firestoreUnsubscribeRef.current();
+              firestoreUnsubscribeRef.current = null;
+            }
           }
-          syncGoogleUserTeacher(user);
-        } else {
-          setIsGoogleConnected(false);
-          setGoogleUser(null);
-          setTeachers([]);
-          setClassrooms([]);
-          setTeacherIdState('');
-          setClassIdState(null);
-          clearStoredSessionData();
-          if (firestoreUnsubscribeRef.current) {
-            firestoreUnsubscribeRef.current();
-            firestoreUnsubscribeRef.current = null;
+        } catch (err) {
+          console.error('Auth state initialization error:', err);
+        } finally {
+          if (isMounted) {
+            setIsAuthChecking(false);
           }
         }
-        setIsAuthChecking(false);
       },
       () => {
         setIsGoogleConnected(false);
@@ -239,17 +255,20 @@ export default function App() {
           firestoreUnsubscribeRef.current();
           firestoreUnsubscribeRef.current = null;
         }
-        setIsAuthChecking(false);
+        if (isMounted) {
+          setIsAuthChecking(false);
+        }
       }
     );
 
     return () => {
+      isMounted = false;
       unsubscribe();
       if (firestoreUnsubscribeRef.current) {
         firestoreUnsubscribeRef.current();
       }
     };
-  }, [syncGoogleUserTeacher]);
+  }, [syncGoogleUserTeacher, showToast]);
 
   // Current Active Teacher
   const activeTeacher = useMemo(() => {

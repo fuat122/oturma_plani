@@ -24,24 +24,36 @@ export const initAuth = (
   onAuthSuccess?: (user: User) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user && user.email) {
-      const isAlkev = user.email.toLowerCase().endsWith('@alkev.k12.tr');
-      if (!isAlkev) {
-        await auth.signOut();
-        try {
-          alert('Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.');
-        } catch (_) {}
+  return onAuthStateChanged(
+    auth,
+    async (user: User | null) => {
+      try {
+        if (user && user.email) {
+          const isAlkev = user.email.toLowerCase().endsWith('@alkev.k12.tr');
+          if (!isAlkev) {
+            await auth.signOut();
+            try {
+              alert('Erişim Engellendi: Sisteme yalnızca @alkev.k12.tr uzantılı kurumsal e-posta adresiniz ile giriş yapabilirsiniz.');
+            } catch (_) {}
+            if (onAuthFailure) onAuthFailure();
+            return;
+          }
+        }
+        if (user) {
+          if (onAuthSuccess) onAuthSuccess(user);
+        } else {
+          if (onAuthFailure) onAuthFailure();
+        }
+      } catch (err) {
+        console.error('Auth state handler error:', err);
         if (onAuthFailure) onAuthFailure();
-        return;
       }
-    }
-    if (user) {
-      if (onAuthSuccess) onAuthSuccess(user);
-    } else {
+    },
+    (error) => {
+      console.error('Firebase onAuthStateChanged error:', error);
       if (onAuthFailure) onAuthFailure();
     }
-  });
+  );
 };
 
 export const googleSignIn = async (): Promise<User | null> => {

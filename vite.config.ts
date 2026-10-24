@@ -5,7 +5,22 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    base: '/oturma_plani/',
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'base-dev-fallback',
+        configureServer(server) {
+          server.middlewares.use((req, _res, next) => {
+            if (req.url === '/' || req.url === '/index.html') {
+              req.url = '/oturma_plani/';
+            }
+            next();
+          });
+        },
+      },
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
